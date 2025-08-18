@@ -3,20 +3,68 @@ import { pgEnum, pgTable as table } from "drizzle-orm/pg-core";
 import * as t from "drizzle-orm/pg-core";
 import { db, types } from "@duneanalytics/sim-idx";
 
-export const feeAmountEnabled = table("fee_amount_enabled", {
-  fee: db.uint24('fee'),
-  tickSpacing: db.int24('tick_spacing'),
+export const vaultBorrow = table("vault_borrow", {
+  vaultAddress: db.address('vault_address'),
+  targetAmount: db.uint256('target_amount'),
+  receiver: db.address('receiver'),
+  borrowerAddress: db.address('borrower_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
 })
 
-export const ownerChanged = table("owner_changed", {
-  oldOwner: db.address('old_owner'),
-  newOwner: db.address('new_owner'),
+export const vaultCreated = table("vault_created", {
+  vaultAddress: db.address('vault_address'),
+  creator: db.address('creator'),
+  factory: db.address('factory'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
 })
 
-export const poolCreated = table("pool_created", {
-  token0: db.address('token0'),
-  token1: db.address('token1'),
-  fee: db.uint24('fee'),
-  tickSpacing: db.int24('tick_spacing'),
-  pool: db.address('pool'),
+export const vaultDeposit = table("vault_deposit", {
+  vaultAddress: db.address('vault_address'),
+  amount: db.uint256('amount'),
+  userAddress: db.address('user_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+})
+
+export const vaultDepositUnderlying = table("vault_deposit_underlying", {
+  vaultAddress: db.address('vault_address'),
+  amount: db.uint256('amount'),
+  userAddress: db.address('user_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+})
+
+export const vaultRepay = table("vault_repay", {
+  vaultAddress: db.address('vault_address'),
+  repayAmount: db.uint256('repay_amount'),
+  userAddress: db.address('user_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+})
+
+export const vaultTeleport = table("vault_teleport", {
+  vaultAddress: db.address('vault_address'),
+  toDeposit: db.uint256('to_deposit'),
+  toBorrow: db.uint256('to_borrow'),
+  userAddress: db.address('user_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+})
+
+export const vaultWithdraw = table("vault_withdraw", {
+  vaultAddress: db.address('vault_address'),
+  amount: db.uint256('amount'),
+  receiver: db.address('receiver'),
+  userAddress: db.address('user_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
 })

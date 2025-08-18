@@ -1,0 +1,98 @@
+---
+description: "Detailed guidelines and patterns for building TypeScript APIs with Hono and Drizzle on the Sim IDX platform. Covers setup, queries, auth, and best practices."
+globs:
+  - "*.ts"
+  - "*.tsx"
+alwaysApply: false
+---
+
+# Sim IDX API Development Rules
+
+You are an expert API developer specializing in building serverless APIs with Hono, Drizzle, and TypeScript on the Sim IDX platform. Your focus is on writing clean, efficient, and type-safe code for the `apis/` directory.
+
+## 1. Framework & Setup
+
+- **Stack**: Your API runs on **Cloudflare Workers** using the **Hono** web framework and **Drizzle ORM** for database access.
+- **App Initialization**: The app instance is created once with `const app = App.create();`.
+- **Database Client**: Access the Drizzle client within a request handler via `const client = db.client(c)`. Never manage your own database connections.
+- **Local Development**:
+    - Run `npm install` to get dependencies.
+    - Create `apis/.dev.vars` and add your `DB_CONNECTION_STRING` from the app page on sim.dune.com.
+    - Start the server with `npm run dev`, available at `http://localhost:8787`.
+
+## 2. API Endpoint Best Practices
+
+- **RESTful Naming**: Use RESTful conventions (e.g., `/api/pools`, `/api/pools/:id`).
+- **Parameter Validation**: Always validate and sanitize user-provided input (e.g., query params, request body) before using it in a database query.
+
+```typescript
+// GOOD EXAMPLE: Complete, safe endpoint
+app.get("/api/pools/:poolAddress", async (c) => {
+  try {
+    const { poolAddress } = c.req.param();
+
+    // Basic validation
+    if (!poolAddress.startsWith('0x')) {
+        return Response.json({ error: "Invalid pool address format" }, { status: 400 });
+    }
+
+    const client = db.client(c);
+    const result = await client
+      .select({
+        pool: poolCreated.pool,
+        token0: poolCreated.token0,
+        token1: poolCreated.token1,
+        fee: poolCreated.fee
+      })
+      .from(poolCreated)
+      .where(eq(poolCreated.pool, poolAddress))
+      .limit(1);
+
+    if (result.length === 0) {
+        return Response.json({ error: "Pool not found" }, { status: 404 });
+    }
+    
+    return Response.json({ data: result[0] });
+  } catch (e) {
+    console.error("Database operation failed:", e);
+    return Response.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+});
+```
+
+## 3. Drizzle ORM Query Patterns
+
+- **Schema Source**: The Drizzle schema is auto-generated in `apis/src/db/schema/Listener.ts` when you run `sim build`. Always import table objects from this file.
+- **Explicit Columns**: Avoid `select()` without arguments. Always specify the columns you need for better performance and type safety.
+- **Prefer ORM**: Use Drizzle's expressive methods. Only use the `sql` helper for complex queries that Drizzle cannot represent.
+- **Pagination**: Implement pagination for all list endpoints. Use `.limit()` and `.offset()` and enforce a reasonable maximum limit (e.g., 100).
+
+```typescript
+// Get a count
+const [{ total }] = await client.select({ total: sql<number>`COUNT(*)` }).from(poolCreated);
+
+// Complex filtering and ordering
+const page = 1;
+const limit = 50;
+const results = await client
+  .select()
+  .from(usdcTransfer)
+  .where(and(
+      eq(usdcTransfer.from, '0x...'),
+      gte(usdcTransfer.value, '1000000')
+  ))
+  .orderBy(desc(usdcTransfer.blockNumber))
+  .limit(limit)
+  .offset((page - 1) * limit);
+```
+
+## 4. Authentication
+
+- **Middleware**: Sim IDX provides built-in authentication. Enable it for all routes by adding `app.use("*", middlewares.authentication);` after `App.create()`.
+- **Production Behavior**: In production, this middleware will reject any request without a valid Sim IDX App Endpoints API key with a `401 Unauthorized` error.
+- **Local Behavior**: The middleware is automatically disabled during local development.
+- **Calling Authenticated API**: Clients must include the key in the `Authorization` header.
+  ```bash
+  curl --url https://<your-api-url>/api/pools \
+    --header 'Authorization: Bearer YOUR_SIM_IDX_APP_ENDPOINTS_API_KEY'
+  ```
