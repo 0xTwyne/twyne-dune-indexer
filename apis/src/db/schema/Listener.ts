@@ -59,6 +59,14 @@ export const vaultDepositUnderlying = table("vault_deposit_underlying", {
   userOwnedCollateral: db.uint256('user_owned_collateral'),
 })
 
+export const vaultMetrics = table("vault_metrics", {
+  vaultAddress: db.address('vault_address'),
+  totalAssets: db.uint256('total_assets'),
+  totalBorrows: db.uint256('total_borrows'),
+  blockNumber: db.uint256('block_number'),
+  blockTimestamp: db.uint256('block_timestamp'),
+})
+
 export const vaultRepay = table("vault_repay", {
   vaultAddress: db.address('vault_address'),
   repayAmount: db.uint256('repay_amount'),

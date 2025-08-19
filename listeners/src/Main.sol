@@ -5,11 +5,13 @@ import "sim-idx-sol/Simidx.sol";
 import "sim-idx-generated/Generated.sol";
 import "./TwyneFactoryListener.sol";
 import "./TwyneVaultListener.sol";
+import "./EVaultListener.sol";
 
 contract Triggers is BaseTriggers {
     function triggers() external virtual override {
         TwyneFactoryListener factoryListener = new TwyneFactoryListener();
         TwyneVaultListener vaultListener = new TwyneVaultListener();
+        EVaultListener eVaultListener = new EVaultListener();
         
         // TODO: Replace with your actual CollateralVaultFactory address on Base
         // You can find this address from your deployment or contract creation transaction
@@ -28,6 +30,13 @@ contract Triggers is BaseTriggers {
         addTriggers(
             chainContract(Chains.Base, actualEventEmitter),
             vaultListener.getTriggers()
+        );
+
+        // Use global chain trigger to capture block data for EVault metrics
+        // This will trigger on every block on Base chain
+        addTriggers(
+            chainGlobal(Chains.Base),
+            eVaultListener.getTriggers()
         );
         
         // Register EulerCollateralVault event listeners for newly created vaults
