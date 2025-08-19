@@ -11,6 +11,10 @@ export const vaultBorrow = table("vault_borrow", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
+  creditReserved: db.uint256('credit_reserved'),
+  debt: db.uint256('debt'),
+  totalCollateral: db.uint256('total_collateral'),
+  userOwnedCollateral: db.uint256('user_owned_collateral'),
 })
 
 export const vaultCreated = table("vault_created", {
@@ -36,6 +40,10 @@ export const vaultDeposit = table("vault_deposit", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
+  creditReserved: db.uint256('credit_reserved'),
+  debt: db.uint256('debt'),
+  totalCollateral: db.uint256('total_collateral'),
+  userOwnedCollateral: db.uint256('user_owned_collateral'),
 })
 
 export const vaultDepositUnderlying = table("vault_deposit_underlying", {
@@ -58,6 +66,10 @@ export const vaultRepay = table("vault_repay", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
+  creditReserved: db.uint256('credit_reserved'),
+  debt: db.uint256('debt'),
+  totalCollateral: db.uint256('total_collateral'),
+  userOwnedCollateral: db.uint256('user_owned_collateral'),
 })
 
 export const vaultTeleport = table("vault_teleport", {
@@ -68,6 +80,10 @@ export const vaultTeleport = table("vault_teleport", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
+  creditReserved: db.uint256('credit_reserved'),
+  debt: db.uint256('debt'),
+  totalCollateral: db.uint256('total_collateral'),
+  userOwnedCollateral: db.uint256('user_owned_collateral'),
 })
 
 export const vaultWithdraw = table("vault_withdraw", {
@@ -78,4 +94,8 @@ export const vaultWithdraw = table("vault_withdraw", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
+  creditReserved: db.uint256('credit_reserved'),
+  debt: db.uint256('debt'),
+  totalCollateral: db.uint256('total_collateral'),
+  userOwnedCollateral: db.uint256('user_owned_collateral'),
 })

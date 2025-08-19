@@ -25,9 +25,9 @@ contract Triggers is BaseTriggers {
         // CRITICAL FIX: Target the actual contract emitting T_DepositUnderlying events
         // Based on transaction analysis, the events come from this contract, not the vault directly
         address actualEventEmitter = 0xedA3564215b6BB516301b6cd213F56350088f02f; // Real source of T_DepositUnderlying
-        addTrigger(
+        addTriggers(
             chainContract(Chains.Base, actualEventEmitter),
-            vaultListener.triggerOnTDepositUnderlyingEvent()
+            vaultListener.getTriggers()
         );
         
         // Register EulerCollateralVault event listeners for newly created vaults
