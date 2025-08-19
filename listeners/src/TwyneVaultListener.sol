@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import "sim-idx-sol/Simidx.sol";
 import "sim-idx-generated/Generated.sol";
+import {IEulerCollateralVault} from "./interfaces/IEulerCollateralVault.sol";
 
 contract TwyneVaultListener is 
     EulerCollateralVault$OnTDepositEvent,
@@ -36,6 +37,10 @@ contract TwyneVaultListener is
         uint64 blockNumber;
         uint64 blockTimestamp;
         bytes32 txnHash;
+        uint256 creditReserved;
+        uint256 debt;
+        uint256 totalCollateral;
+        uint256 userOwnedCollateral;
     }
 
     // Event to track withdrawals
@@ -111,13 +116,22 @@ contract TwyneVaultListener is
         EventContext memory ctx, 
         EulerCollateralVault$TDepositUnderlyingEventParams memory inputs
     ) external override {
+        uint256 maxRelease = IEulerCollateralVault(ctx.txn.call.callee()).maxRelease();
+        uint256 maxRepay = IEulerCollateralVault(ctx.txn.call.callee()).maxRepay();
+        uint256 totalAssetsDepositedOrReserved = IEulerCollateralVault(ctx.txn.call.callee()).totalAssetsDepositedOrReserved();
+        uint256 userOwnedCollateral = totalAssetsDepositedOrReserved - maxRelease;
+
         emit VaultDepositUnderlying(VaultDepositUnderlyingData({
             vaultAddress: ctx.txn.call.callee(),
             amount: inputs.amount,
             userAddress: ctx.txn.call.caller(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
-            txnHash: ctx.txn.hash()
+            txnHash: ctx.txn.hash(),
+            creditReserved: maxRelease,
+            debt: maxRepay,
+            totalCollateral: totalAssetsDepositedOrReserved, 
+            userOwnedCollateral: userOwnedCollateral
         }));
     }
 

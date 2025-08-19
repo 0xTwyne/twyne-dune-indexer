@@ -45,6 +45,10 @@ export const vaultDepositUnderlying = table("vault_deposit_underlying", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
+  creditReserved: db.uint256('credit_reserved'),
+  debt: db.uint256('debt'),
+  totalCollateral: db.uint256('total_collateral'),
+  userOwnedCollateral: db.uint256('user_owned_collateral'),
 })
 
 export const vaultRepay = table("vault_repay", {

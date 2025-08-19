@@ -25,7 +25,7 @@ contract TwyneFactoryListener is
         address intermediateVault;
         address targetAsset;
         address targetVault;
-        uint256 twyneLiqLTV;
+        uint256 twyneLiqLtv;
         address twyneVaultManager;
         uint256 version;
     }
@@ -38,7 +38,7 @@ contract TwyneFactoryListener is
         address intermediateVault = IEulerCollateralVault(inputs.vault).intermediateVault();
         address targetAsset = IEulerCollateralVault(inputs.vault).targetAsset();
         address targetVault = IEulerCollateralVault(inputs.vault).targetVault();
-        uint256 twyneLiqLTV = IEulerCollateralVault(inputs.vault).twyneLiqLTV();
+        uint256 twyneLiqLtv = IEulerCollateralVault(inputs.vault).twyneLiqLtv();
         address twyneVaultManager = IEulerCollateralVault(inputs.vault).twyneVaultManager();
         uint256 version = IEulerCollateralVault(inputs.vault).version();
         emit VaultCreated(VaultCreatedData({
@@ -52,7 +52,7 @@ contract TwyneFactoryListener is
             intermediateVault: intermediateVault,
             targetAsset: targetAsset,
             targetVault: targetVault,
-            twyneLiqLTV: twyneLiqLTV,
+            twyneLiqLtv: twyneLiqLtv,
             twyneVaultManager: twyneVaultManager,
             version: version
         }));

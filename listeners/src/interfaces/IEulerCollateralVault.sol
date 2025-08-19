@@ -14,6 +14,18 @@ interface IEulerCollateralVault {
         returns (
             address intermediateVault
         );
+    function maxRelease()
+        external
+        view
+        returns (uint256);
+    function maxRepay()
+        external
+        view
+        returns (uint256);
+    function totalAssetsDepositedOrReserved()
+        external
+        view
+        returns (uint256);
     function targetAsset()
         external
         view
@@ -26,7 +38,7 @@ interface IEulerCollateralVault {
         returns (
             address targetVault
         );
-    function twyneLiqLTV()
+    function twyneLiqLtv()
         external
         view
         returns (uint256);
