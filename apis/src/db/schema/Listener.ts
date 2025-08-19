@@ -20,7 +20,13 @@ export const vaultCreated = table("vault_created", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
+  asset: db.address('asset'),
+  intermediateVault: db.address('intermediate_vault'),
+  targetAsset: db.address('target_asset'),
+  targetVault: db.address('target_vault'),
   twyneLiqLtv: db.uint256('twyne_liq_ltv'),
+  twyneVaultManager: db.address('twyne_vault_manager'),
+  version: db.uint256('version'),
 })
 
 export const vaultDeposit = table("vault_deposit", {
