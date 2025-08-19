@@ -20,6 +20,7 @@ export const vaultCreated = table("vault_created", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
+  twyneLiqLtv: db.uint256('twyne_liq_ltv'),
 })
 
 export const vaultDeposit = table("vault_deposit", {

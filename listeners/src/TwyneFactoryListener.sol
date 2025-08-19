@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import "sim-idx-sol/Simidx.sol";
 import "sim-idx-generated/Generated.sol";
+import {IEulerCollateralVault} from "./interfaces/IEulerCollateralVault.sol";
 
 contract TwyneFactoryListener is 
     CollateralVaultFactory$OnTCollateralVaultCreatedEvent 
@@ -20,19 +21,40 @@ contract TwyneFactoryListener is
         uint64 blockNumber;
         uint64 blockTimestamp;
         bytes32 txnHash;
+        address asset;
+        address intermediateVault;
+        address targetAsset;
+        address targetVault;
+        uint256 twyneLiqLTV;
+        address twyneVaultManager;
+        uint256 version;
     }
 
     function onTCollateralVaultCreatedEvent(
         EventContext memory ctx, 
         CollateralVaultFactory$TCollateralVaultCreatedEventParams memory inputs
     ) external override {
+        address asset = IEulerCollateralVault(inputs.vault).asset();
+        address intermediateVault = IEulerCollateralVault(inputs.vault).intermediateVault();
+        address targetAsset = IEulerCollateralVault(inputs.vault).targetAsset();
+        address targetVault = IEulerCollateralVault(inputs.vault).targetVault();
+        uint256 twyneLiqLTV = IEulerCollateralVault(inputs.vault).twyneLiqLTV();
+        address twyneVaultManager = IEulerCollateralVault(inputs.vault).twyneVaultManager();
+        uint256 version = IEulerCollateralVault(inputs.vault).version();
         emit VaultCreated(VaultCreatedData({
             vaultAddress: inputs.vault,
             creator: ctx.txn.call.caller(),
             factory: ctx.txn.call.callee(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
-            txnHash: ctx.txn.hash()
+            txnHash: ctx.txn.hash(),
+            asset: asset,
+            intermediateVault: intermediateVault,
+            targetAsset: targetAsset,
+            targetVault: targetVault,
+            twyneLiqLTV: twyneLiqLTV,
+            twyneVaultManager: twyneVaultManager,
+            version: version
         }));
     }
 
