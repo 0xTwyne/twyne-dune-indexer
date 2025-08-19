@@ -4,3 +4,4 @@ dist
 
 # Exclude environment variables files
 .env*
+.dev.vars

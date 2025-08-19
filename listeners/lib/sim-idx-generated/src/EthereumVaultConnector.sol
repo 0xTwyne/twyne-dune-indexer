@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "../../sim-idx-sol/src/Triggers.sol";
-import "../../sim-idx-sol/src/Context.sol";
+import "lib/sim-idx-sol/src/Triggers.sol";
+import "lib/sim-idx-sol/src/Context.sol";
 
 function EthereumVaultConnector$Abi() pure returns (Abi memory) {
     return Abi("EthereumVaultConnector");
