@@ -3,6 +3,7 @@ import {
   vaultCreated, 
   vaultMetrics,
   factorySetCollateralVaultLiquidated,
+  answerUpdated,
 } from "./db/schema/Listener";
 import { types, db, App, middlewares } from "@duneanalytics/sim-idx";
 
@@ -154,6 +155,29 @@ app.get("/api/evaults/latest", async (c) => {
     });
   } catch (e) {
     console.error("Latest metrics query failed:", e);
+    return Response.json({ error: (e as Error).message }, { status: 500 });
+  }
+});
+
+// Get latest 5 answerUpdated events
+app.get("/api/chainlink/latest-answers", async (c) => {
+  try {
+    const client = db.client(c);
+
+    const latestAnswers = await client
+      .select()
+      .from(answerUpdated)
+      .orderBy(desc(answerUpdated.blockTimestamp))
+      .limit(5);
+
+    return Response.json({
+      latestAnswers,
+      count: latestAnswers.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("Latest answers query failed:", e);
+    console.error("Cause:", (e as Error).cause);
     return Response.json({ error: (e as Error).message }, { status: 500 });
   }
 });

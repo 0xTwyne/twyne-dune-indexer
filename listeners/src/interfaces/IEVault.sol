@@ -20,4 +20,16 @@ interface IEVault {
         returns (
             address
         );
+    function unitOfAccount()
+        external
+        view
+        returns (
+            address
+        );
+    function oracle()
+        external
+        view
+        returns (
+            address
+        );
 }

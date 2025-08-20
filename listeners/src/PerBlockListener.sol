@@ -6,6 +6,7 @@ import "sim-idx-generated/Generated.sol";
 import "./interfaces/IEVault.sol";
 import "./interfaces/IGenericFactory.sol";
 import "./interfaces/IVaultManager.sol";
+import "./interfaces/IEulerRouter.sol";
 
 contract PerBlockListener is Raw$OnBlock {
     
@@ -50,6 +51,7 @@ contract PerBlockListener is Raw$OnBlock {
     event VaultMetrics(
         address indexed vaultAddress,
         uint256 totalAssets,
+        uint256 totalAssetsUsd,
         uint256 totalBorrows,
         uint256 blockNumber,
         uint256 blockTimestamp
@@ -73,47 +75,42 @@ contract PerBlockListener is Raw$OnBlock {
         }
     }
 
-    function _captureVaultData(address vaultAddress, uint256 blockNumber) internal {
+    function _getTotalAssets(address vaultAddress) internal returns (uint256) {
         try IEVault(vaultAddress).totalAssets() returns (uint256 assets) {
-            try IEVault(vaultAddress).totalBorrows() returns (uint256 borrows) {
-                emit VaultMetrics(
-                    vaultAddress,
-                    assets,
-                    borrows,
-                    blockNumber,
-                    block.timestamp
-                );
-            } catch {
-                // If totalBorrows fails, emit with 0 borrows
-                emit VaultMetrics(
-                    vaultAddress,
-                    assets,
-                    0,
-                    blockNumber,
-                    block.timestamp
-                );
-            }
+            return assets;
         } catch {
-            // If totalAssets fails, try just totalBorrows
-            try IEVault(vaultAddress).totalBorrows() returns (uint256 borrows) {
-                emit VaultMetrics(
-                    vaultAddress,
-                    0,
-                    borrows,
-                    blockNumber,
-                    block.timestamp
-                );
-            } catch {
-                // If both fail, emit zeros (vault might be inactive)
-                emit VaultMetrics(
-                    vaultAddress,
-                    0,
-                    0,
-                    blockNumber,
-                    block.timestamp
-                );
-            }
+            return 0;
         }
+    }
+
+    function _getBorrows(address vaultAddress) internal returns (uint256) {
+        try IEVault(vaultAddress).totalBorrows() returns (uint256 borrows) {
+            return borrows;
+        } catch {
+            return 0;
+        }
+    }
+
+    function _getQuote(address vaultAddress, uint256 inAmount) internal returns (uint256) {
+        try IEulerRouter(IEVault(vaultAddress).oracle()).getQuote(inAmount, IEVault(vaultAddress).asset(), IEVault(vaultAddress).unitOfAccount()) returns (uint256 quote) {
+            return quote;
+        } catch {
+            return 0;
+        }
+    }
+
+    function _captureVaultData(address vaultAddress, uint256 blockNumber) internal {
+        uint256 totalAssets = _getTotalAssets(vaultAddress);
+        uint256 totalBorrows = _getBorrows(vaultAddress);
+        uint256 totalAssetsUsd = _getQuote(vaultAddress, totalAssets);
+        emit VaultMetrics(
+            vaultAddress,
+            totalAssets,
+            totalAssetsUsd,
+            totalBorrows,
+            blockNumber,
+            block.timestamp
+        );
     }
 
     function getTriggers() external view returns (RawTrigger[] memory) {

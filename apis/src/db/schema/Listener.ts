@@ -106,6 +106,7 @@ export const vaultDepositUnderlying = table("vault_deposit_underlying", {
 export const vaultMetrics = table("vault_metrics", {
   vaultAddress: db.address('vault_address'),
   totalAssets: db.uint256('total_assets'),
+  totalAssetsUsd: db.uint256('total_assets_usd'),
   totalBorrows: db.uint256('total_borrows'),
   blockNumber: db.uint256('block_number'),
   blockTimestamp: db.uint256('block_timestamp'),

@@ -7,5 +7,6 @@ import "./EVault.sol";
 import "./EVaultLiquidate.sol";
 import "./EthereumVaultConnector.sol";
 import "./EulerCollateralVault.sol";
+import "./EulerRouter.sol";
 import "./GenericFactory.sol";
 import "./VaultManager.sol";
