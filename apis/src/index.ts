@@ -6,6 +6,9 @@ import {
 } from "./db/schema/Listener";
 import { types, db, App, middlewares } from "@duneanalytics/sim-idx";
 
+const Address = types.Address;
+const Uint = types.Uint;
+
 const app = App.create();
 app.use("*", middlewares.authentication);
 
@@ -42,10 +45,10 @@ app.get("/api/collateralVaults", async (c) => {
 });
 
 // Get historical vault metrics for a specific vault address
-app.get("/api/vault/:address/metrics", async (c) => {
+app.get("/api/evault/:address/metrics", async (c) => {
   try {
     const client = db.client(c);
-    const vaultAddress = c.req.param("address");
+    const vaultAddressParam = c.req.param("address");
     const limit = Math.min(parseInt(c.req.query("limit") || "100"), 1000);
     const offset = parseInt(c.req.query("offset") || "0");
     const startBlock = c.req.query("startBlock");
@@ -53,24 +56,49 @@ app.get("/api/vault/:address/metrics", async (c) => {
     const startTime = c.req.query("startTime");
     const endTime = c.req.query("endTime");
 
-    if (!vaultAddress) {
+    // Validate vault address parameter
+    if (!vaultAddressParam) {
       return Response.json({ error: "Vault address is required" }, { status: 400 });
     }
 
-    // Build query conditions
-    const conditions = [eq(vaultMetrics.vaultAddress, vaultAddress as any)];
+    // Remove '0x' prefix if present and validate hex format
+    const cleanAddress = vaultAddressParam.startsWith('0x') 
+      ? vaultAddressParam.slice(2) 
+      : vaultAddressParam;
+
+    // Check if it's a valid hex string (only contains 0-9, a-f, A-F)
+    if (!/^[0-9a-fA-F]+$/.test(cleanAddress)) {
+      return Response.json(
+        { error: "Vault address must be a valid hex string" },
+        { status: 400 }
+      );
+    }
+
+    // Check if it's exactly 40 characters (20 bytes when converted)
+    if (cleanAddress.length !== 40) {
+      return Response.json(
+        { error: "Vault address must be exactly 20 bytes (40 hex characters)" },
+        { status: 400 }
+      );
+    }
+
+    // Convert to proper Address type
+    const vaultAddress = Address.from(cleanAddress);
+
+    // Build query conditions with proper types
+    const conditions = [eq(vaultMetrics.vaultAddress, vaultAddress)];
 
     if (startBlock) {
-      conditions.push(gte(vaultMetrics.blockNumber, BigInt(startBlock) as any));
+      conditions.push(gte(vaultMetrics.blockNumber, new Uint(BigInt(startBlock))));
     }
     if (endBlock) {
-      conditions.push(lte(vaultMetrics.blockNumber, BigInt(endBlock) as any));
+      conditions.push(lte(vaultMetrics.blockNumber, new Uint(BigInt(endBlock))));
     }
     if (startTime) {
-      conditions.push(gte(vaultMetrics.blockTimestamp, BigInt(startTime) as any));
+      conditions.push(gte(vaultMetrics.blockTimestamp, new Uint(BigInt(startTime))));
     }
     if (endTime) {
-      conditions.push(lte(vaultMetrics.blockTimestamp, BigInt(endTime) as any));
+      conditions.push(lte(vaultMetrics.blockTimestamp, new Uint(BigInt(endTime))));
     }
 
     const result = await client
@@ -87,7 +115,7 @@ app.get("/api/vault/:address/metrics", async (c) => {
       .where(and(...conditions));
 
     return Response.json({
-      vaultAddress,
+      vaultAddress: vaultAddressParam,
       metrics: result,
       count: result.length,
       totalCount: totalCount[0].count,
@@ -96,12 +124,13 @@ app.get("/api/vault/:address/metrics", async (c) => {
     });
   } catch (e) {
     console.error("Vault metrics query failed:", e);
+    console.error("Cause:", (e as Error).cause);
     return Response.json({ error: (e as Error).message }, { status: 500 });
   }
 });
 
 // Get latest metrics for all tracked vaults
-app.get("/api/vaults/metrics/latest", async (c) => {
+app.get("/api/evaults/latest", async (c) => {
   try {
     const client = db.client(c);
 
