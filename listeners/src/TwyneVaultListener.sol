@@ -109,7 +109,7 @@ contract TwyneVaultListener is
         uint256 maxRepay;
         uint256 totalAssetsDepositedOrReserved;
         uint256 userOwnedCollateral;
-        // uint256 twyneLiqLtv;
+        uint256 twyneLiqLtv;
         bool canLiquidate;
         bool isExternallyLiquidated;
         uint64 blockNumber;
@@ -124,7 +124,7 @@ contract TwyneVaultListener is
         uint256 userOwnedCollateral = totalAssetsDepositedOrReserved - maxRelease;
         bool canLiquidate = collateralVault.canLiquidate();
         bool isExternallyLiquidated = collateralVault.isExternallyLiquidated();
-        // uint256 twyneLiqLtv = collateralVault.twyneLiqLtv();
+        uint256 twyneLiqLtv = collateralVault.twyneLiqLTV();
 
         return PositionSnapshotData({
             vaultAddress: vaultAddress,
@@ -132,7 +132,7 @@ contract TwyneVaultListener is
             maxRepay: maxRepay,
             totalAssetsDepositedOrReserved: totalAssetsDepositedOrReserved,
             userOwnedCollateral: userOwnedCollateral,
-            // twyneLiqLtv: twyneLiqLtv,
+            twyneLiqLtv: twyneLiqLtv,
             canLiquidate: canLiquidate,
             isExternallyLiquidated: isExternallyLiquidated,
             blockNumber: uint64(block.number),

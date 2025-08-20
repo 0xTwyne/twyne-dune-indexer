@@ -40,6 +40,9 @@ export const positionSnapshot = table("position_snapshot", {
   maxRepay: db.uint256('max_repay'),
   totalAssetsDepositedOrReserved: db.uint256('total_assets_deposited_or_reserved'),
   userOwnedCollateral: db.uint256('user_owned_collateral'),
+  twyneLiqLtv: db.uint256('twyne_liq_ltv'),
+  canLiquidate: t.boolean('can_liquidate'),
+  isExternallyLiquidated: t.boolean('is_externally_liquidated'),
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
 })

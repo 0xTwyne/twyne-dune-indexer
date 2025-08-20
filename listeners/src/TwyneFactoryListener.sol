@@ -69,7 +69,7 @@ contract TwyneFactoryListener is
         address intermediateVault = IEulerCollateralVault(inputs.vault).intermediateVault();
         address targetAsset = IEulerCollateralVault(inputs.vault).targetAsset();
         address targetVault = IEulerCollateralVault(inputs.vault).targetVault();
-        uint256 twyneLiqLtv = IEulerCollateralVault(inputs.vault).twyneLiqLtv();
+        uint256 twyneLiqLtv = IEulerCollateralVault(inputs.vault).twyneLiqLTV();
         address twyneVaultManager = IEulerCollateralVault(inputs.vault).twyneVaultManager();
         uint256 version = IEulerCollateralVault(inputs.vault).version();
         emit VaultCreated(VaultCreatedData({
@@ -109,7 +109,7 @@ contract TwyneFactoryListener is
         uint256 maxRepay = IEulerCollateralVault(inputs.collateralVault).maxRepay();
         uint256 totalAssetsDepositedOrReserved = IEulerCollateralVault(inputs.collateralVault).totalAssetsDepositedOrReserved();
         uint256 userOwnedCollateral = totalAssetsDepositedOrReserved - maxRelease;
-        uint256 twyneLiqLtv = IEulerCollateralVault(inputs.collateralVault).twyneLiqLtv();
+        uint256 twyneLiqLtv = IEulerCollateralVault(inputs.collateralVault).twyneLiqLTV();
         emit FactorySetCollateralVaultLiquidated(FactorySetCollateralVaultLiquidatedData({
             factoryAddress: ctx.txn.call.callee(),
             collateralVault: inputs.collateralVault,

@@ -38,7 +38,7 @@ interface IEulerCollateralVault {
         returns (
             address targetVault
         );
-    function twyneLiqLtv()
+    function twyneLiqLTV()
         external
         view
         returns (uint256);
