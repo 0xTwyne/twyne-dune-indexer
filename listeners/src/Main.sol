@@ -7,7 +7,7 @@ import "./TwyneFactoryListener.sol";
 import "./TwyneVaultListener.sol";
 import "./PerBlockListener.sol";
 import "./ChainlinkAggregatorListener.sol";
-import "./EVaultListener.sol";
+import "./EVaultLiquidateListener.sol";
 
 contract Triggers is BaseTriggers {
     function triggers() external virtual override {
@@ -15,7 +15,7 @@ contract Triggers is BaseTriggers {
         TwyneVaultListener vaultListener = new TwyneVaultListener();
         PerBlockListener perBlockListener = new PerBlockListener();
         ChainlinkAggregatorListener chainlinkAggregatorListener = new ChainlinkAggregatorListener();
-        EVaultListener evaultListener = new EVaultListener();
+        EVaultLiquidateListener evaultLiquidateListener = new EVaultLiquidateListener();
 
         address collateralVaultFactory = 0xBe3205Ec9FF7314e9Df89d91ee28C5a22BEb1200; 
         address chainlinkAggregatorWeth = 0x57d2d46Fc7ff2A7142d479F2f59e1E3F95447077;
@@ -35,14 +35,14 @@ contract Triggers is BaseTriggers {
         );
 
         // EVaults
-        // addTriggers(
-        //     chainAbi(Chains.Base, EVault$Abi()),
-        //     evaultListener.getTriggers()
-        // );
         addTriggers(
-            chainContract(Chains.Base, 0x0A1a3b5f2041F33522C4efc754a7D096f880eE16),
-            evaultListener.getTriggers()
+            chainAbi(Chains.Base, EVaultLiquidate$Abi()),
+            evaultLiquidateListener.getTriggers()
         );
+        // addTriggers(
+        //     chainContract(Chains.Base, 0x0A1a3b5f2041F33522C4efc754a7D096f880eE16),
+        //     evaultLiquidateListener.getTriggers()
+        // );
 
         // Snapshots
         addTriggers(

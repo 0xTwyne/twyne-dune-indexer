@@ -5,8 +5,9 @@ import "sim-idx-sol/Simidx.sol";
 import "sim-idx-generated/Generated.sol";
 // import {IEVault} from "./interfaces/IEVault.sol";
 
-contract EVaultListener is 
-        EVault$OnLiquidateEvent
+contract EVaultLiquidateListener is 
+        EVaultLiquidate$OnLiquidateEvent
+        // EVaultLiquidate$PreLiquidateEvent
     {
     // Event to track external liquidation handling
     /// @custom:index external_liquidation_by_vault BTREE (vaultAddress, blockTimestamp);
@@ -25,7 +26,7 @@ contract EVaultListener is
 
     function onLiquidateEvent(
         EventContext memory ctx, 
-        EVault$LiquidateEventParams memory inputs
+        EVaultLiquidate$LiquidateEventParams memory inputs
     ) external override {
         emit ExternalLiquidation(ExternalLiquidationData({
             vaultAddress: ctx.txn.call.callee(),
@@ -39,6 +40,13 @@ contract EVaultListener is
             yieldBalance: inputs.yieldBalance
         }));
     }
+
+    // function preLiquidateEvent(
+    //     EventContext memory ctx, 
+    //     EVaultLiquidate$PreLiquidateEventParams memory inputs
+    // ) external override {
+    //     
+    // }
 
     function getTriggers() external view returns (Trigger[] memory) {
         Trigger[] memory triggers = new Trigger[](1);
