@@ -13,6 +13,18 @@ export const answerUpdated = table("answer_updated", {
   aggregator: db.address('aggregator'),
 })
 
+export const externalLiquidation = table("external_liquidation", {
+  vaultAddress: db.address('vault_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  liquidator: db.address('liquidator'),
+  violator: db.address('violator'),
+  collateral: db.address('collateral'),
+  repayAssets: db.uint256('repay_assets'),
+  yieldBalance: db.uint256('yield_balance'),
+})
+
 export const factoryHandleExternalLiquidation = table("factory_handle_external_liquidation", {
   factoryAddress: db.address('factory_address'),
   blockNumber: db.uint64('block_number'),
