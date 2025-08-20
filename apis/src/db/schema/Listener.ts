@@ -34,18 +34,14 @@ export const factorySetCollateralVaultLiquidated = table("factory_set_collateral
   twyneLiqLtv: db.uint256('twyne_liq_ltv'),
 })
 
-export const preLiquidationState = table("pre_liquidation_state", {
-  factoryAddress: db.address('factory_address'),
-  collateralVault: db.address('collateral_vault'),
-  liquidatorAddress: db.address('liquidator_address'),
+export const positionSnapshot = table("position_snapshot", {
+  vaultAddress: db.address('vault_address'),
+  maxRelease: db.uint256('max_release'),
+  maxRepay: db.uint256('max_repay'),
+  totalAssetsDepositedOrReserved: db.uint256('total_assets_deposited_or_reserved'),
+  userOwnedCollateral: db.uint256('user_owned_collateral'),
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
-  txnHash: db.bytes32('txn_hash'),
-  preMaxRelease: db.uint256('pre_max_release'),
-  preMaxRepay: db.uint256('pre_max_repay'),
-  preTotalAssetsDepositedOrReserved: db.uint256('pre_total_assets_deposited_or_reserved'),
-  preUserOwnedCollateral: db.uint256('pre_user_owned_collateral'),
-  preTwyneLiqLtv: db.uint256('pre_twyne_liq_ltv'),
 })
 
 export const vaultBorrow = table("vault_borrow", {
@@ -56,10 +52,6 @@ export const vaultBorrow = table("vault_borrow", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
-  creditReserved: db.uint256('credit_reserved'),
-  debt: db.uint256('debt'),
-  totalCollateral: db.uint256('total_collateral'),
-  userOwnedCollateral: db.uint256('user_owned_collateral'),
 })
 
 export const vaultCreated = table("vault_created", {
@@ -85,10 +77,6 @@ export const vaultDeposit = table("vault_deposit", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
-  creditReserved: db.uint256('credit_reserved'),
-  debt: db.uint256('debt'),
-  totalCollateral: db.uint256('total_collateral'),
-  userOwnedCollateral: db.uint256('user_owned_collateral'),
 })
 
 export const vaultDepositUnderlying = table("vault_deposit_underlying", {
@@ -98,10 +86,6 @@ export const vaultDepositUnderlying = table("vault_deposit_underlying", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
-  creditReserved: db.uint256('credit_reserved'),
-  debt: db.uint256('debt'),
-  totalCollateral: db.uint256('total_collateral'),
-  userOwnedCollateral: db.uint256('user_owned_collateral'),
 })
 
 export const vaultMetrics = table("vault_metrics", {
@@ -119,10 +103,6 @@ export const vaultRepay = table("vault_repay", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
-  creditReserved: db.uint256('credit_reserved'),
-  debt: db.uint256('debt'),
-  totalCollateral: db.uint256('total_collateral'),
-  userOwnedCollateral: db.uint256('user_owned_collateral'),
 })
 
 export const vaultTeleport = table("vault_teleport", {
@@ -133,10 +113,6 @@ export const vaultTeleport = table("vault_teleport", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
-  creditReserved: db.uint256('credit_reserved'),
-  debt: db.uint256('debt'),
-  totalCollateral: db.uint256('total_collateral'),
-  userOwnedCollateral: db.uint256('user_owned_collateral'),
 })
 
 export const vaultWithdraw = table("vault_withdraw", {
@@ -147,8 +123,4 @@ export const vaultWithdraw = table("vault_withdraw", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
-  creditReserved: db.uint256('credit_reserved'),
-  debt: db.uint256('debt'),
-  totalCollateral: db.uint256('total_collateral'),
-  userOwnedCollateral: db.uint256('user_owned_collateral'),
 })

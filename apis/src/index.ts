@@ -2,7 +2,6 @@ import { eq, desc, sql, count, and, gte, lte } from "drizzle-orm";
 import { 
   vaultCreated, 
   vaultMetrics,
-  preLiquidationState,
   factorySetCollateralVaultLiquidated,
 } from "./db/schema/Listener";
 import { types, db, App, middlewares } from "@duneanalytics/sim-idx";
@@ -130,116 +129,6 @@ app.get("/api/vaults/metrics/latest", async (c) => {
   }
 });
 
-// Get pre-liquidation states for a specific collateral vault
-app.get("/api/vault/:address/pre-liquidation", async (c) => {
-  try {
-    const client = db.client(c);
-    const vaultAddress = c.req.param("address");
-    const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
-    const offset = parseInt(c.req.query("offset") || "0");
-
-    if (!vaultAddress) {
-      return Response.json({ error: "Vault address is required" }, { status: 400 });
-    }
-
-    const result = await client
-      .select()
-      .from(preLiquidationState)
-      .where(eq(preLiquidationState.collateralVault, vaultAddress as any))
-      .orderBy(desc(preLiquidationState.blockTimestamp))
-      .limit(limit)
-      .offset(offset);
-
-    const totalCount = await client
-      .select({ count: count() })
-      .from(preLiquidationState)
-      .where(eq(preLiquidationState.collateralVault, vaultAddress as any));
-
-    return Response.json({
-      vaultAddress,
-      preLiquidationStates: result,
-      count: result.length,
-      totalCount: totalCount[0].count,
-      limit,
-      offset
-    });
-  } catch (e) {
-    console.error("Pre-liquidation state query failed:", e);
-    return Response.json({ error: (e as Error).message }, { status: 500 });
-  }
-});
-
-// Get liquidation events with their corresponding pre-liquidation states
-app.get("/api/liquidations/with-pre-state", async (c) => {
-  try {
-    const client = db.client(c);
-    const limit = Math.min(parseInt(c.req.query("limit") || "20"), 100);
-    const offset = parseInt(c.req.query("offset") || "0");
-    const vaultAddress = c.req.query("vaultAddress");
-
-    // Build base conditions
-    const conditions = [];
-    if (vaultAddress) {
-      conditions.push(eq(factorySetCollateralVaultLiquidated.collateralVault, vaultAddress as any));
-    }
-
-    // Query liquidation events with their pre-states using a left join
-    const result = await client
-      .select({
-        // Liquidation event data
-        liquidationTxnHash: factorySetCollateralVaultLiquidated.txnHash,
-        liquidationBlockNumber: factorySetCollateralVaultLiquidated.blockNumber,
-        liquidationBlockTimestamp: factorySetCollateralVaultLiquidated.blockTimestamp,
-        factoryAddress: factorySetCollateralVaultLiquidated.factoryAddress,
-        collateralVault: factorySetCollateralVaultLiquidated.collateralVault,
-        liquidatorAddress: factorySetCollateralVaultLiquidated.liquidatorAddress,
-        postLiquidationCreditReserved: factorySetCollateralVaultLiquidated.creditReserved,
-        postLiquidationDebt: factorySetCollateralVaultLiquidated.debt,
-        postLiquidationTotalCollateral: factorySetCollateralVaultLiquidated.totalCollateral,
-        postLiquidationUserOwnedCollateral: factorySetCollateralVaultLiquidated.userOwnedCollateral,
-        postLiquidationTwyneLiqLtv: factorySetCollateralVaultLiquidated.twyneLiqLtv,
-        
-        // Pre-liquidation state data
-        preLiquidationTxnHash: preLiquidationState.txnHash,
-        preLiquidationBlockNumber: preLiquidationState.blockNumber,
-        preLiquidationBlockTimestamp: preLiquidationState.blockTimestamp,
-        preMaxRelease: preLiquidationState.preMaxRelease,
-        preMaxRepay: preLiquidationState.preMaxRepay,
-        preTotalAssetsDepositedOrReserved: preLiquidationState.preTotalAssetsDepositedOrReserved,
-        preUserOwnedCollateral: preLiquidationState.preUserOwnedCollateral,
-        preTwyneLiqLtv: preLiquidationState.preTwyneLiqLtv,
-      })
-      .from(factorySetCollateralVaultLiquidated)
-      .leftJoin(
-        preLiquidationState,
-        and(
-          eq(factorySetCollateralVaultLiquidated.collateralVault, preLiquidationState.collateralVault),
-          eq(factorySetCollateralVaultLiquidated.txnHash, preLiquidationState.txnHash)
-        )
-      )
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(factorySetCollateralVaultLiquidated.blockTimestamp))
-      .limit(limit)
-      .offset(offset);
-
-    const totalCount = await client
-      .select({ count: count() })
-      .from(factorySetCollateralVaultLiquidated)
-      .where(conditions.length > 0 ? and(...conditions) : undefined);
-
-    return Response.json({
-      liquidationsWithPreState: result,
-      count: result.length,
-      totalCount: totalCount[0].count,
-      limit,
-      offset
-    });
-  } catch (e) {
-    console.error("Liquidations with pre-state query failed:", e);
-    return Response.json({ error: (e as Error).message }, { status: 500 });
-  }
-});
-
 // Health check endpoint
 app.get("/api/health", async (c) => {
   try {
@@ -248,14 +137,12 @@ app.get("/api/health", async (c) => {
     // Test database connection
     const testQuery = await client.select({ count: count() }).from(vaultCreated);
     const metricsQuery = await client.select({ count: count() }).from(vaultMetrics);
-    const preLiquidationQuery = await client.select({ count: count() }).from(preLiquidationState);
     
     return Response.json({ 
       status: "healthy", 
       timestamp: new Date().toISOString(),
       totalVaults: testQuery[0].count,
       totalMetricsRecords: metricsQuery[0].count,
-      totalPreLiquidationRecords: preLiquidationQuery[0].count
     });
   } catch (e) {
     console.error("Health check failed:", e);

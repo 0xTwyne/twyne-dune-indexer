@@ -11,8 +11,15 @@ contract TwyneVaultListener is
     EulerCollateralVault$OnTWithdrawEvent,
     EulerCollateralVault$OnTBorrowEvent,
     EulerCollateralVault$OnTRepayEvent,
-    EulerCollateralVault$OnTTeleportEvent
+    EulerCollateralVault$OnTTeleportEvent,
+    Raw$OnBlock
     {
+    
+    // Cache to track vaults that emitted events in the current block
+    mapping(address => bool) private activeVaultsInBlock;
+    
+    // Array to keep track of active vault addresses for iteration
+    address[] private activeVaultsList;
     // Event to track deposits with comprehensive indexing
     /// @custom:index vault_deposit_by_vault BTREE (vaultAddress, blockTimestamp);
     /// @custom:index vault_deposit_by_user BTREE (userAddress, blockTimestamp);
@@ -24,10 +31,6 @@ contract TwyneVaultListener is
         uint64 blockNumber;
         uint64 blockTimestamp;
         bytes32 txnHash;
-        uint256 creditReserved;
-        uint256 debt;
-        uint256 totalCollateral;
-        uint256 userOwnedCollateral;
     }
 
     // Event to track underlying deposits
@@ -41,10 +44,6 @@ contract TwyneVaultListener is
         uint64 blockNumber;
         uint64 blockTimestamp;
         bytes32 txnHash;
-        uint256 creditReserved;
-        uint256 debt;
-        uint256 totalCollateral;
-        uint256 userOwnedCollateral;
     }
 
     // Event to track withdrawals
@@ -59,10 +58,6 @@ contract TwyneVaultListener is
         uint64 blockNumber;
         uint64 blockTimestamp;
         bytes32 txnHash;
-        uint256 creditReserved;
-        uint256 debt;
-        uint256 totalCollateral;
-        uint256 userOwnedCollateral;
     }
 
     // Event to track borrowing
@@ -77,10 +72,6 @@ contract TwyneVaultListener is
         uint64 blockNumber;
         uint64 blockTimestamp;
         bytes32 txnHash;
-        uint256 creditReserved;
-        uint256 debt;
-        uint256 totalCollateral;
-        uint256 userOwnedCollateral;
     }
 
     // Event to track repayments
@@ -94,10 +85,6 @@ contract TwyneVaultListener is
         uint64 blockNumber;
         uint64 blockTimestamp;
         bytes32 txnHash;
-        uint256 creditReserved;
-        uint256 debt;
-        uint256 totalCollateral;
-        uint256 userOwnedCollateral;
     }
 
     // Event to track teleport operations (combined deposit/borrow)
@@ -112,32 +99,66 @@ contract TwyneVaultListener is
         uint64 blockNumber;
         uint64 blockTimestamp;
         bytes32 txnHash;
-        uint256 creditReserved;
-        uint256 debt;
-        uint256 totalCollateral;
+    }
+
+    /// @custom:index position_snapshot_by_vault BTREE (vaultAddress, blockTimestamp);
+    event PositionSnapshot(PositionSnapshotData);
+    struct PositionSnapshotData {
+        address vaultAddress;
+        uint256 maxRelease;
+        uint256 maxRepay;
+        uint256 totalAssetsDepositedOrReserved;
         uint256 userOwnedCollateral;
+        // uint256 twyneLiqLtv;
+        bool canLiquidate;
+        bool isExternallyLiquidated;
+        uint64 blockNumber;
+        uint64 blockTimestamp;
+    }
+
+    function getPositionSnapshot(address vaultAddress) internal view returns (PositionSnapshotData memory) {
+        IEulerCollateralVault collateralVault = IEulerCollateralVault(vaultAddress);
+        uint256 maxRelease = collateralVault.maxRelease();
+        uint256 maxRepay = collateralVault.maxRepay();
+        uint256 totalAssetsDepositedOrReserved = collateralVault.totalAssetsDepositedOrReserved();
+        uint256 userOwnedCollateral = totalAssetsDepositedOrReserved - maxRelease;
+        bool canLiquidate = collateralVault.canLiquidate();
+        bool isExternallyLiquidated = collateralVault.isExternallyLiquidated();
+        // uint256 twyneLiqLtv = collateralVault.twyneLiqLtv();
+
+        return PositionSnapshotData({
+            vaultAddress: vaultAddress,
+            maxRelease: maxRelease,
+            maxRepay: maxRepay,
+            totalAssetsDepositedOrReserved: totalAssetsDepositedOrReserved,
+            userOwnedCollateral: userOwnedCollateral,
+            // twyneLiqLtv: twyneLiqLtv,
+            canLiquidate: canLiquidate,
+            isExternallyLiquidated: isExternallyLiquidated,
+            blockNumber: uint64(block.number),
+            blockTimestamp: uint64(block.timestamp)
+        });
     }
 
     function onTDepositEvent(
         EventContext memory ctx, 
         EulerCollateralVault$TDepositEventParams memory inputs
     ) external override {
-        uint256 maxRelease = IEulerCollateralVault(ctx.txn.call.callee()).maxRelease();
-        uint256 maxRepay = IEulerCollateralVault(ctx.txn.call.callee()).maxRepay();
-        uint256 totalAssetsDepositedOrReserved = IEulerCollateralVault(ctx.txn.call.callee()).totalAssetsDepositedOrReserved();
-        uint256 userOwnedCollateral = totalAssetsDepositedOrReserved - maxRelease;
+        address vaultAddress = ctx.txn.call.callee();
+        
+        // Cache the vault address for end-of-block processing
+        if (!activeVaultsInBlock[vaultAddress]) {
+            activeVaultsInBlock[vaultAddress] = true;
+            activeVaultsList.push(vaultAddress);
+        }
 
         emit VaultDeposit(VaultDepositData({
-            vaultAddress: ctx.txn.call.callee(),
+            vaultAddress: vaultAddress,
             amount: inputs.amount,
             userAddress: ctx.txn.call.caller(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
-            txnHash: ctx.txn.hash(),
-            creditReserved: maxRelease,
-            debt: maxRepay,
-            totalCollateral: totalAssetsDepositedOrReserved,
-            userOwnedCollateral: userOwnedCollateral
+            txnHash: ctx.txn.hash()
         }));
     }
 
@@ -145,22 +166,21 @@ contract TwyneVaultListener is
         EventContext memory ctx, 
         EulerCollateralVault$TDepositUnderlyingEventParams memory inputs
     ) external override {
-        uint256 maxRelease = IEulerCollateralVault(ctx.txn.call.callee()).maxRelease();
-        uint256 maxRepay = IEulerCollateralVault(ctx.txn.call.callee()).maxRepay();
-        uint256 totalAssetsDepositedOrReserved = IEulerCollateralVault(ctx.txn.call.callee()).totalAssetsDepositedOrReserved();
-        uint256 userOwnedCollateral = totalAssetsDepositedOrReserved - maxRelease;
+        address vaultAddress = ctx.txn.call.callee();
+        
+        // Cache the vault address for end-of-block processing
+        if (!activeVaultsInBlock[vaultAddress]) {
+            activeVaultsInBlock[vaultAddress] = true;
+            activeVaultsList.push(vaultAddress);
+        }
 
         emit VaultDepositUnderlying(VaultDepositUnderlyingData({
-            vaultAddress: ctx.txn.call.callee(),
+            vaultAddress: vaultAddress,
             amount: inputs.amount,
             userAddress: ctx.txn.call.caller(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
-            txnHash: ctx.txn.hash(),
-            creditReserved: maxRelease,
-            debt: maxRepay,
-            totalCollateral: totalAssetsDepositedOrReserved, 
-            userOwnedCollateral: userOwnedCollateral
+            txnHash: ctx.txn.hash()
         }));
     }
 
@@ -168,23 +188,22 @@ contract TwyneVaultListener is
         EventContext memory ctx, 
         EulerCollateralVault$TWithdrawEventParams memory inputs
     ) external override {
-        uint256 maxRelease = IEulerCollateralVault(ctx.txn.call.callee()).maxRelease();
-        uint256 maxRepay = IEulerCollateralVault(ctx.txn.call.callee()).maxRepay();
-        uint256 totalAssetsDepositedOrReserved = IEulerCollateralVault(ctx.txn.call.callee()).totalAssetsDepositedOrReserved();
-        uint256 userOwnedCollateral = totalAssetsDepositedOrReserved - maxRelease;
+        address vaultAddress = ctx.txn.call.callee();
+        
+        // Cache the vault address for end-of-block processing
+        if (!activeVaultsInBlock[vaultAddress]) {
+            activeVaultsInBlock[vaultAddress] = true;
+            activeVaultsList.push(vaultAddress);
+        }
 
         emit VaultWithdraw(VaultWithdrawData({
-            vaultAddress: ctx.txn.call.callee(),
+            vaultAddress: vaultAddress,
             amount: inputs.amount,
             receiver: inputs.receiver,
             userAddress: ctx.txn.call.caller(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
-            txnHash: ctx.txn.hash(),
-            creditReserved: maxRelease,
-            debt: maxRepay,
-            totalCollateral: totalAssetsDepositedOrReserved,
-            userOwnedCollateral: userOwnedCollateral
+            txnHash: ctx.txn.hash()
         }));
     }
 
@@ -192,23 +211,22 @@ contract TwyneVaultListener is
         EventContext memory ctx, 
         EulerCollateralVault$TBorrowEventParams memory inputs
     ) external override {
-        uint256 maxRelease = IEulerCollateralVault(ctx.txn.call.callee()).maxRelease();
-        uint256 maxRepay = IEulerCollateralVault(ctx.txn.call.callee()).maxRepay();
-        uint256 totalAssetsDepositedOrReserved = IEulerCollateralVault(ctx.txn.call.callee()).totalAssetsDepositedOrReserved();
-        uint256 userOwnedCollateral = totalAssetsDepositedOrReserved - maxRelease;
+        address vaultAddress = ctx.txn.call.callee();
+        
+        // Cache the vault address for end-of-block processing
+        if (!activeVaultsInBlock[vaultAddress]) {
+            activeVaultsInBlock[vaultAddress] = true;
+            activeVaultsList.push(vaultAddress);
+        }
 
         emit VaultBorrow(VaultBorrowData({
-            vaultAddress: ctx.txn.call.callee(),
+            vaultAddress: vaultAddress,
             targetAmount: inputs.targetAmount,
             receiver: inputs.receiver,
             borrowerAddress: ctx.txn.call.caller(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
-            txnHash: ctx.txn.hash(),
-            creditReserved: maxRelease,
-            debt: maxRepay,
-            totalCollateral: totalAssetsDepositedOrReserved,
-            userOwnedCollateral: userOwnedCollateral
+            txnHash: ctx.txn.hash()
         }));
     }
 
@@ -216,22 +234,21 @@ contract TwyneVaultListener is
         EventContext memory ctx, 
         EulerCollateralVault$TRepayEventParams memory inputs
     ) external override {
-        uint256 maxRelease = IEulerCollateralVault(ctx.txn.call.callee()).maxRelease();
-        uint256 maxRepay = IEulerCollateralVault(ctx.txn.call.callee()).maxRepay();
-        uint256 totalAssetsDepositedOrReserved = IEulerCollateralVault(ctx.txn.call.callee()).totalAssetsDepositedOrReserved();
-        uint256 userOwnedCollateral = totalAssetsDepositedOrReserved - maxRelease;
+        address vaultAddress = ctx.txn.call.callee();
+        
+        // Cache the vault address for end-of-block processing
+        if (!activeVaultsInBlock[vaultAddress]) {
+            activeVaultsInBlock[vaultAddress] = true;
+            activeVaultsList.push(vaultAddress);
+        }
 
         emit VaultRepay(VaultRepayData({
-            vaultAddress: ctx.txn.call.callee(),
+            vaultAddress: vaultAddress,
             repayAmount: inputs.repayAmount,
             userAddress: ctx.txn.call.caller(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
-            txnHash: ctx.txn.hash(),
-            creditReserved: maxRelease,
-            debt: maxRepay,
-            totalCollateral: totalAssetsDepositedOrReserved,
-            userOwnedCollateral: userOwnedCollateral
+            txnHash: ctx.txn.hash()
         }));
     }
 
@@ -239,25 +256,58 @@ contract TwyneVaultListener is
         EventContext memory ctx, 
         EulerCollateralVault$TTeleportEventParams memory inputs
     ) external override {
-        uint256 maxRelease = IEulerCollateralVault(ctx.txn.call.callee()).maxRelease();
-        uint256 maxRepay = IEulerCollateralVault(ctx.txn.call.callee()).maxRepay();
-        uint256 totalAssetsDepositedOrReserved = IEulerCollateralVault(ctx.txn.call.callee()).totalAssetsDepositedOrReserved();
-        uint256 userOwnedCollateral = totalAssetsDepositedOrReserved - maxRelease;
+        address vaultAddress = ctx.txn.call.callee();
+        
+        // Cache the vault address for end-of-block processing
+        if (!activeVaultsInBlock[vaultAddress]) {
+            activeVaultsInBlock[vaultAddress] = true;
+            activeVaultsList.push(vaultAddress);
+        }
 
         emit VaultTeleport(VaultTeleportData({
-            vaultAddress: ctx.txn.call.callee(),
+            vaultAddress: vaultAddress,
             toDeposit: inputs.toDeposit,
             toBorrow: inputs.toBorrow,
             userAddress: ctx.txn.call.caller(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
-            txnHash: ctx.txn.hash(),
-            creditReserved: maxRelease,
-            debt: maxRepay,
-            totalCollateral: totalAssetsDepositedOrReserved,
-            userOwnedCollateral: userOwnedCollateral
+            txnHash: ctx.txn.hash()
         }));
     }
+
+    function onBlock(RawBlockContext memory ctx) external override {
+        // Process all vaults that emitted events during this block
+        if (activeVaultsList.length > 0) {
+            _processActiveVaults();
+            _clearCache();
+        }
+    }
+    
+    function _processActiveVaults() internal {
+        for (uint256 i = 0; i < activeVaultsList.length; i++) {
+            address vaultAddress = activeVaultsList[i];
+            
+            // Use try-catch with external calls to handle potential failures
+            try IEulerCollateralVault(vaultAddress).maxRelease() returns (uint256) {
+                PositionSnapshotData memory snapshot = getPositionSnapshot(vaultAddress);
+                emit PositionSnapshot(snapshot);
+            } catch {
+                // If snapshot retrieval fails, continue with next vault
+                // This prevents the entire block processing from failing due to one vault
+                continue;
+            }
+        }
+    }
+    
+    function _clearCache() internal {
+        // Clear the mapping
+        for (uint256 i = 0; i < activeVaultsList.length; i++) {
+            delete activeVaultsInBlock[activeVaultsList[i]];
+        }
+        // Clear the array
+        delete activeVaultsList;
+    }
+
 
     function getTriggers() external view returns (Trigger[] memory) {
         Trigger[] memory triggers = new Trigger[](6);
@@ -267,6 +317,12 @@ contract TwyneVaultListener is
         triggers[3] = this.triggerOnTBorrowEvent();
         triggers[4] = this.triggerOnTRepayEvent();
         triggers[5] = this.triggerOnTTeleportEvent();
+        return triggers;
+    }
+    
+    function getRawTriggers() external view returns (RawTrigger[] memory) {
+        RawTrigger[] memory triggers = new RawTrigger[](1);
+        triggers[0] = this.triggerOnBlock();
         return triggers;
     }
 }

@@ -50,4 +50,12 @@ interface IEulerCollateralVault {
         external
         view
         returns (uint256);
+    function canLiquidate()
+        external
+        view
+        returns (bool);
+    function isExternallyLiquidated()
+        external
+        view
+        returns (bool);
 }
