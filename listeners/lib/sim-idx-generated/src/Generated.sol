@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "./ChainlinkAggregator.sol";
 import "./CollateralVaultFactory.sol";
 import "./EVault.sol";
 import "./EthereumVaultConnector.sol";
 import "./EulerCollateralVault.sol";
+import "./GenericFactory.sol";
+import "./VaultManager.sol";

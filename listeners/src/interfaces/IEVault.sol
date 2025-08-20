@@ -14,4 +14,10 @@ interface IEVault {
         returns (
             uint256 totalBorrows
         );
+    function asset()
+        external
+        view
+        returns (
+            address
+        );
 }

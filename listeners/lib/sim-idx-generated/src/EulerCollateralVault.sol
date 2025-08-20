@@ -151,22 +151,9 @@ struct EulerCollateralVault$WithdrawFunctionInputs {
     address receiver;
 }
 
-struct EulerCollateralVault$InitializedEventParams {
-    uint64 version;
-}
-
-struct EulerCollateralVault$TAddAllowedTargetVaultEventParams {
-    address intermediateVault;
-    address targetVault;
-}
-
 struct EulerCollateralVault$TBorrowEventParams {
     uint256 targetAmount;
     address receiver;
-}
-
-struct EulerCollateralVault$TCollateralVaultCreatedEventParams {
-    address vault;
 }
 
 struct EulerCollateralVault$TDepositEventParams {
@@ -177,86 +164,8 @@ struct EulerCollateralVault$TDepositUnderlyingEventParams {
     uint256 amount;
 }
 
-struct EulerCollateralVault$TDoCallEventParams {
-    address to;
-    uint256 value;
-    bytes data;
-}
-
-struct EulerCollateralVault$TFactoryPauseEventParams {
-    bool pause;
-}
-
-struct EulerCollateralVault$TRedeemUnderlyingEventParams {
-    uint256 amount;
-    address receiver;
-}
-
-struct EulerCollateralVault$TRemoveAllowedTargetVaultEventParams {
-    address intermediateVault;
-    address targetVault;
-    uint256 index;
-}
-
 struct EulerCollateralVault$TRepayEventParams {
     uint256 repayAmount;
-}
-
-struct EulerCollateralVault$TSetBeaconEventParams {
-    address targetVault;
-    address beacon;
-}
-
-struct EulerCollateralVault$TSetCollateralVaultFactoryEventParams {
-    address factory;
-}
-
-struct EulerCollateralVault$TSetCollateralVaultLiquidatedEventParams {
-    address collateralVault;
-    address liquidator;
-}
-
-struct EulerCollateralVault$TSetExternalLiqBufferEventParams {
-    address collateralAddress;
-    uint16 liqBuffer;
-}
-
-struct EulerCollateralVault$TSetIntermediateVaultEventParams {
-    address intermediateVault;
-}
-
-struct EulerCollateralVault$TSetLtvEventParams {
-    address intermediateVault;
-    address collateralVault;
-    uint16 borrowLimit;
-    uint16 liquidationLimit;
-    uint32 rampDuration;
-}
-
-struct EulerCollateralVault$TSetMaxLiqLtvEventParams {
-    address collateralAddress;
-    uint16 ltv;
-}
-
-struct EulerCollateralVault$TSetOracleResolvedVaultEventParams {
-    address collateralAddress;
-    bool allow;
-}
-
-struct EulerCollateralVault$TSetOracleRouterEventParams {
-    address newOracleRouter;
-}
-
-struct EulerCollateralVault$TSetTwyneLiqLtvEventParams {
-    uint256 ltv;
-}
-
-struct EulerCollateralVault$TSetVaultManagerEventParams {
-    address vaultManager;
-}
-
-struct EulerCollateralVault$TSkimEventParams {
-    uint256 amount;
 }
 
 struct EulerCollateralVault$TTeleportEventParams {
@@ -269,34 +178,6 @@ struct EulerCollateralVault$TWithdrawEventParams {
     address receiver;
 }
 
-abstract contract EulerCollateralVault$OnInitializedEvent {
-    function onInitializedEvent(EventContext memory ctx, EulerCollateralVault$InitializedEventParams memory inputs) virtual external;
-
-    function triggerOnInitializedEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0xc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d2),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onInitializedEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTAddAllowedTargetVaultEvent {
-    function onTAddAllowedTargetVaultEvent(EventContext memory ctx, EulerCollateralVault$TAddAllowedTargetVaultEventParams memory inputs) virtual external;
-
-    function triggerOnTAddAllowedTargetVaultEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x50edacaf4177a0a51a3003c8c50d39a4e5929720e5b68cf56888decd5691dd12),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTAddAllowedTargetVaultEvent.selector
-        });
-    }
-}
-
 abstract contract EulerCollateralVault$OnTBorrowEvent {
     function onTBorrowEvent(EventContext memory ctx, EulerCollateralVault$TBorrowEventParams memory inputs) virtual external;
 
@@ -307,48 +188,6 @@ abstract contract EulerCollateralVault$OnTBorrowEvent {
             triggerType: TriggerType.EVENT,
             listenerCodehash: address(this).codehash,
             handlerSelector: this.onTBorrowEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTCollateralVaultCreatedEvent {
-    function onTCollateralVaultCreatedEvent(EventContext memory ctx, EulerCollateralVault$TCollateralVaultCreatedEventParams memory inputs) virtual external;
-
-    function triggerOnTCollateralVaultCreatedEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0xd5c014427d17eead1b9e8111804901d992255c3982e066ff0b196835c2747e15),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTCollateralVaultCreatedEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTCollateralVaultInitializedEvent {
-    function onTCollateralVaultInitializedEvent(EventContext memory ctx) virtual external;
-
-    function triggerOnTCollateralVaultInitializedEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x12a9cc17c88558b7be75e6263660f7e37d1b75b5370e41a69e6c5ecde2ef510b),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTCollateralVaultInitializedEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTControllerDisabledEvent {
-    function onTControllerDisabledEvent(EventContext memory ctx) virtual external;
-
-    function triggerOnTControllerDisabledEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0xbe90bd3a08ade2ac97b3cf9459c45ec3cd3e2d7535525c28a9ab65055b1fcea2),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTControllerDisabledEvent.selector
         });
     }
 }
@@ -381,90 +220,6 @@ abstract contract EulerCollateralVault$OnTDepositUnderlyingEvent {
     }
 }
 
-abstract contract EulerCollateralVault$OnTDoCallEvent {
-    function onTDoCallEvent(EventContext memory ctx, EulerCollateralVault$TDoCallEventParams memory inputs) virtual external;
-
-    function triggerOnTDoCallEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0xaa0a31269202c4785ce0060378b0e5536b5cec6ec2d6cf3cabd5bc9462d65e0a),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTDoCallEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTFactoryPauseEvent {
-    function onTFactoryPauseEvent(EventContext memory ctx, EulerCollateralVault$TFactoryPauseEventParams memory inputs) virtual external;
-
-    function triggerOnTFactoryPauseEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x9ffbe306addc3fd62817d52bd3de9f4eaf3db2d0aaf2f742d096b9846d3dd3cc),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTFactoryPauseEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTHandleExternalLiquidationEvent {
-    function onTHandleExternalLiquidationEvent(EventContext memory ctx) virtual external;
-
-    function triggerOnTHandleExternalLiquidationEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x201069227b1c078db0bf2f6c8d33cb0ae064045c18ce10c1017f360997ae8d3e),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTHandleExternalLiquidationEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTRebalanceEvent {
-    function onTRebalanceEvent(EventContext memory ctx) virtual external;
-
-    function triggerOnTRebalanceEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x7f89682ae65a1f951f91061a52d68beff208a52bbbb13b88ff3045a6c6d1bf92),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTRebalanceEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTRedeemUnderlyingEvent {
-    function onTRedeemUnderlyingEvent(EventContext memory ctx, EulerCollateralVault$TRedeemUnderlyingEventParams memory inputs) virtual external;
-
-    function triggerOnTRedeemUnderlyingEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x3339ef804667402c8f3f362db72e43c0db110e5350d243b388abd9c534d147bb),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTRedeemUnderlyingEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTRemoveAllowedTargetVaultEvent {
-    function onTRemoveAllowedTargetVaultEvent(EventContext memory ctx, EulerCollateralVault$TRemoveAllowedTargetVaultEventParams memory inputs) virtual external;
-
-    function triggerOnTRemoveAllowedTargetVaultEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x8cdf0649535799d80c21537f19ba756f7469582bb84536e93c8d701f2796a6a1),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTRemoveAllowedTargetVaultEvent.selector
-        });
-    }
-}
-
 abstract contract EulerCollateralVault$OnTRepayEvent {
     function onTRepayEvent(EventContext memory ctx, EulerCollateralVault$TRepayEventParams memory inputs) virtual external;
 
@@ -475,174 +230,6 @@ abstract contract EulerCollateralVault$OnTRepayEvent {
             triggerType: TriggerType.EVENT,
             listenerCodehash: address(this).codehash,
             handlerSelector: this.onTRepayEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTSetBeaconEvent {
-    function onTSetBeaconEvent(EventContext memory ctx, EulerCollateralVault$TSetBeaconEventParams memory inputs) virtual external;
-
-    function triggerOnTSetBeaconEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x02ef2821a980639d4751433ca0875b8cb3c10a1766df6855903ceba1ffa010ac),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTSetBeaconEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTSetCollateralVaultFactoryEvent {
-    function onTSetCollateralVaultFactoryEvent(EventContext memory ctx, EulerCollateralVault$TSetCollateralVaultFactoryEventParams memory inputs) virtual external;
-
-    function triggerOnTSetCollateralVaultFactoryEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x6799863c8acecaec14cd4e47492ea09c5589438f0f2fff2d1d8c1655d82bb2ce),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTSetCollateralVaultFactoryEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTSetCollateralVaultLiquidatedEvent {
-    function onTSetCollateralVaultLiquidatedEvent(EventContext memory ctx, EulerCollateralVault$TSetCollateralVaultLiquidatedEventParams memory inputs) virtual external;
-
-    function triggerOnTSetCollateralVaultLiquidatedEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x4cec2177390e430c1c12e2cc1e8b8739182c3d6fdf7f5e0aa45e44eb156c16e7),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTSetCollateralVaultLiquidatedEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTSetExternalLiqBufferEvent {
-    function onTSetExternalLiqBufferEvent(EventContext memory ctx, EulerCollateralVault$TSetExternalLiqBufferEventParams memory inputs) virtual external;
-
-    function triggerOnTSetExternalLiqBufferEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0xd82a30016f0c547a70a7131b7b0a4812ed54aff668591763d9f605c8f8820e2e),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTSetExternalLiqBufferEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTSetIntermediateVaultEvent {
-    function onTSetIntermediateVaultEvent(EventContext memory ctx, EulerCollateralVault$TSetIntermediateVaultEventParams memory inputs) virtual external;
-
-    function triggerOnTSetIntermediateVaultEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x22ef484689bf8f52a76523b76f3985a5e85d716b7ee5af836f2af3c250dc607c),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTSetIntermediateVaultEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTSetLtvEvent {
-    function onTSetLtvEvent(EventContext memory ctx, EulerCollateralVault$TSetLtvEventParams memory inputs) virtual external;
-
-    function triggerOnTSetLtvEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0xea5b8cb10c470c01b271642da6387adcd6027f322e322652b99e981948c90e2b),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTSetLtvEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTSetMaxLiqLtvEvent {
-    function onTSetMaxLiqLtvEvent(EventContext memory ctx, EulerCollateralVault$TSetMaxLiqLtvEventParams memory inputs) virtual external;
-
-    function triggerOnTSetMaxLiqLtvEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x29bcc99188c72336fdc1864dc85bd43266a3b893bf6e292ea7d5510e0ae248ef),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTSetMaxLiqLtvEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTSetOracleResolvedVaultEvent {
-    function onTSetOracleResolvedVaultEvent(EventContext memory ctx, EulerCollateralVault$TSetOracleResolvedVaultEventParams memory inputs) virtual external;
-
-    function triggerOnTSetOracleResolvedVaultEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x5930809fcc0838c62013ba36bd54b7cf61adebe96a8ea7c7a75f5df45b695e1d),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTSetOracleResolvedVaultEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTSetOracleRouterEvent {
-    function onTSetOracleRouterEvent(EventContext memory ctx, EulerCollateralVault$TSetOracleRouterEventParams memory inputs) virtual external;
-
-    function triggerOnTSetOracleRouterEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x9c06287931491ac1b0bf9eecb992cc716533e7c09b8e2b3fd1a112f3fb39a35d),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTSetOracleRouterEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTSetTwyneLiqLtvEvent {
-    function onTSetTwyneLiqLtvEvent(EventContext memory ctx, EulerCollateralVault$TSetTwyneLiqLtvEventParams memory inputs) virtual external;
-
-    function triggerOnTSetTwyneLiqLtvEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x4ed6247dd07fa547f2a5675b8a09ba23414bcbb7250a9de94f2a17eb8fc56040),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTSetTwyneLiqLtvEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTSetVaultManagerEvent {
-    function onTSetVaultManagerEvent(EventContext memory ctx, EulerCollateralVault$TSetVaultManagerEventParams memory inputs) virtual external;
-
-    function triggerOnTSetVaultManagerEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x0b975cd083078350093c287a36366c9364e6669414749c4f8ea060b1a6207e03),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTSetVaultManagerEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTSkimEvent {
-    function onTSkimEvent(EventContext memory ctx, EulerCollateralVault$TSkimEventParams memory inputs) virtual external;
-
-    function triggerOnTSkimEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0xbf070d83d8b5b8f55a9661ab7e6003ff366d49ace118b225d25a86194f4004d1),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTSkimEvent.selector
         });
     }
 }
@@ -1375,34 +962,6 @@ abstract contract EulerCollateralVault$PreSetTwyneLiqLtvFunction {
     }
 }
 
-abstract contract EulerCollateralVault$OnSkimFunction {
-    function onSkimFunction(FunctionContext memory ctx) virtual external;
-
-    function triggerOnSkimFunction() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes4(0x1dd19cb4),
-            triggerType: TriggerType.FUNCTION,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onSkimFunction.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$PreSkimFunction {
-    function preSkimFunction(PreFunctionContext memory ctx) virtual external;
-
-    function triggerPreSkimFunction() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes4(0x1dd19cb4),
-            triggerType: TriggerType.PRE_FUNCTION,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.preSkimFunction.selector
-        });
-    }
-}
-
 abstract contract EulerCollateralVault$OnSymbolFunction {
     function onSymbolFunction(FunctionContext memory ctx, EulerCollateralVault$SymbolFunctionOutputs memory outputs) virtual external;
 
@@ -1656,22 +1215,9 @@ abstract contract EulerCollateralVault$PreWithdrawFunction {
 }
 
 
-struct EulerCollateralVault$EmitAllEvents$Initialized {
-  uint64 version;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TAddAllowedTargetVault {
-  address intermediateVault;
-  address targetVault;
-}
-
 struct EulerCollateralVault$EmitAllEvents$TBorrow {
   uint256 targetAmount;
   address receiver;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TCollateralVaultCreated {
-  address vault;
 }
 
 struct EulerCollateralVault$EmitAllEvents$TDeposit {
@@ -1682,86 +1228,8 @@ struct EulerCollateralVault$EmitAllEvents$TDepositUnderlying {
   uint256 amount;
 }
 
-struct EulerCollateralVault$EmitAllEvents$TDoCall {
-  address to;
-  uint256 value;
-  bytes data;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TFactoryPause {
-  bool pause;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TRedeemUnderlying {
-  uint256 amount;
-  address receiver;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TRemoveAllowedTargetVault {
-  address intermediateVault;
-  address targetVault;
-  uint256 index;
-}
-
 struct EulerCollateralVault$EmitAllEvents$TRepay {
   uint256 repayAmount;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TSetBeacon {
-  address targetVault;
-  address beacon;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TSetCollateralVaultFactory {
-  address factory;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TSetCollateralVaultLiquidated {
-  address collateralVault;
-  address liquidator;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TSetExternalLiqBuffer {
-  address collateralAddress;
-  uint16 liqBuffer;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TSetIntermediateVault {
-  address intermediateVault;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TSetLtv {
-  address intermediateVault;
-  address collateralVault;
-  uint16 borrowLimit;
-  uint16 liquidationLimit;
-  uint32 rampDuration;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TSetMaxLiqLtv {
-  address collateralAddress;
-  uint16 ltv;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TSetOracleResolvedVault {
-  address collateralAddress;
-  bool allow;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TSetOracleRouter {
-  address newOracleRouter;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TSetTwyneLiqLtv {
-  uint256 ltv;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TSetVaultManager {
-  address vaultManager;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TSkim {
-  uint256 amount;
 }
 
 struct EulerCollateralVault$EmitAllEvents$TTeleport {
@@ -1775,83 +1243,22 @@ struct EulerCollateralVault$EmitAllEvents$TWithdraw {
 }
 
 contract EulerCollateralVault$EmitAllEvents is
-  EulerCollateralVault$OnInitializedEvent,
-EulerCollateralVault$OnTAddAllowedTargetVaultEvent,
-EulerCollateralVault$OnTBorrowEvent,
-EulerCollateralVault$OnTCollateralVaultCreatedEvent,
-EulerCollateralVault$OnTCollateralVaultInitializedEvent,
-EulerCollateralVault$OnTControllerDisabledEvent,
+  EulerCollateralVault$OnTBorrowEvent,
 EulerCollateralVault$OnTDepositEvent,
 EulerCollateralVault$OnTDepositUnderlyingEvent,
-EulerCollateralVault$OnTDoCallEvent,
-EulerCollateralVault$OnTFactoryPauseEvent,
-EulerCollateralVault$OnTHandleExternalLiquidationEvent,
-EulerCollateralVault$OnTRebalanceEvent,
-EulerCollateralVault$OnTRedeemUnderlyingEvent,
-EulerCollateralVault$OnTRemoveAllowedTargetVaultEvent,
 EulerCollateralVault$OnTRepayEvent,
-EulerCollateralVault$OnTSetBeaconEvent,
-EulerCollateralVault$OnTSetCollateralVaultFactoryEvent,
-EulerCollateralVault$OnTSetCollateralVaultLiquidatedEvent,
-EulerCollateralVault$OnTSetExternalLiqBufferEvent,
-EulerCollateralVault$OnTSetIntermediateVaultEvent,
-EulerCollateralVault$OnTSetLtvEvent,
-EulerCollateralVault$OnTSetMaxLiqLtvEvent,
-EulerCollateralVault$OnTSetOracleResolvedVaultEvent,
-EulerCollateralVault$OnTSetOracleRouterEvent,
-EulerCollateralVault$OnTSetTwyneLiqLtvEvent,
-EulerCollateralVault$OnTSetVaultManagerEvent,
-EulerCollateralVault$OnTSkimEvent,
 EulerCollateralVault$OnTTeleportEvent,
 EulerCollateralVault$OnTWithdrawEvent
 {
-  event Initialized(EulerCollateralVault$EmitAllEvents$Initialized);
-  event TAddAllowedTargetVault(EulerCollateralVault$EmitAllEvents$TAddAllowedTargetVault);
   event TBorrow(EulerCollateralVault$EmitAllEvents$TBorrow);
-  event TCollateralVaultCreated(EulerCollateralVault$EmitAllEvents$TCollateralVaultCreated);
-  event TCollateralVaultInitialized();
-  event TControllerDisabled();
   event TDeposit(EulerCollateralVault$EmitAllEvents$TDeposit);
   event TDepositUnderlying(EulerCollateralVault$EmitAllEvents$TDepositUnderlying);
-  event TDoCall(EulerCollateralVault$EmitAllEvents$TDoCall);
-  event TFactoryPause(EulerCollateralVault$EmitAllEvents$TFactoryPause);
-  event THandleExternalLiquidation();
-  event TRebalance();
-  event TRedeemUnderlying(EulerCollateralVault$EmitAllEvents$TRedeemUnderlying);
-  event TRemoveAllowedTargetVault(EulerCollateralVault$EmitAllEvents$TRemoveAllowedTargetVault);
   event TRepay(EulerCollateralVault$EmitAllEvents$TRepay);
-  event TSetBeacon(EulerCollateralVault$EmitAllEvents$TSetBeacon);
-  event TSetCollateralVaultFactory(EulerCollateralVault$EmitAllEvents$TSetCollateralVaultFactory);
-  event TSetCollateralVaultLiquidated(EulerCollateralVault$EmitAllEvents$TSetCollateralVaultLiquidated);
-  event TSetExternalLiqBuffer(EulerCollateralVault$EmitAllEvents$TSetExternalLiqBuffer);
-  event TSetIntermediateVault(EulerCollateralVault$EmitAllEvents$TSetIntermediateVault);
-  event TSetLtv(EulerCollateralVault$EmitAllEvents$TSetLtv);
-  event TSetMaxLiqLtv(EulerCollateralVault$EmitAllEvents$TSetMaxLiqLtv);
-  event TSetOracleResolvedVault(EulerCollateralVault$EmitAllEvents$TSetOracleResolvedVault);
-  event TSetOracleRouter(EulerCollateralVault$EmitAllEvents$TSetOracleRouter);
-  event TSetTwyneLiqLtv(EulerCollateralVault$EmitAllEvents$TSetTwyneLiqLtv);
-  event TSetVaultManager(EulerCollateralVault$EmitAllEvents$TSetVaultManager);
-  event TSkim(EulerCollateralVault$EmitAllEvents$TSkim);
   event TTeleport(EulerCollateralVault$EmitAllEvents$TTeleport);
   event TWithdraw(EulerCollateralVault$EmitAllEvents$TWithdraw);
 
-  function onInitializedEvent(EventContext memory ctx, EulerCollateralVault$InitializedEventParams memory inputs) virtual external override {
-    emit Initialized(EulerCollateralVault$EmitAllEvents$Initialized(inputs.version));
-  }
-function onTAddAllowedTargetVaultEvent(EventContext memory ctx, EulerCollateralVault$TAddAllowedTargetVaultEventParams memory inputs) virtual external override {
-    emit TAddAllowedTargetVault(EulerCollateralVault$EmitAllEvents$TAddAllowedTargetVault(inputs.intermediateVault, inputs.targetVault));
-  }
-function onTBorrowEvent(EventContext memory ctx, EulerCollateralVault$TBorrowEventParams memory inputs) virtual external override {
+  function onTBorrowEvent(EventContext memory ctx, EulerCollateralVault$TBorrowEventParams memory inputs) virtual external override {
     emit TBorrow(EulerCollateralVault$EmitAllEvents$TBorrow(inputs.targetAmount, inputs.receiver));
-  }
-function onTCollateralVaultCreatedEvent(EventContext memory ctx, EulerCollateralVault$TCollateralVaultCreatedEventParams memory inputs) virtual external override {
-    emit TCollateralVaultCreated(EulerCollateralVault$EmitAllEvents$TCollateralVaultCreated(inputs.vault));
-  }
-function onTCollateralVaultInitializedEvent(EventContext memory ctx) virtual external override {
-    emit TCollateralVaultInitialized();
-  }
-function onTControllerDisabledEvent(EventContext memory ctx) virtual external override {
-    emit TControllerDisabled();
   }
 function onTDepositEvent(EventContext memory ctx, EulerCollateralVault$TDepositEventParams memory inputs) virtual external override {
     emit TDeposit(EulerCollateralVault$EmitAllEvents$TDeposit(inputs.amount));
@@ -1859,62 +1266,8 @@ function onTDepositEvent(EventContext memory ctx, EulerCollateralVault$TDepositE
 function onTDepositUnderlyingEvent(EventContext memory ctx, EulerCollateralVault$TDepositUnderlyingEventParams memory inputs) virtual external override {
     emit TDepositUnderlying(EulerCollateralVault$EmitAllEvents$TDepositUnderlying(inputs.amount));
   }
-function onTDoCallEvent(EventContext memory ctx, EulerCollateralVault$TDoCallEventParams memory inputs) virtual external override {
-    emit TDoCall(EulerCollateralVault$EmitAllEvents$TDoCall(inputs.to, inputs.value, inputs.data));
-  }
-function onTFactoryPauseEvent(EventContext memory ctx, EulerCollateralVault$TFactoryPauseEventParams memory inputs) virtual external override {
-    emit TFactoryPause(EulerCollateralVault$EmitAllEvents$TFactoryPause(inputs.pause));
-  }
-function onTHandleExternalLiquidationEvent(EventContext memory ctx) virtual external override {
-    emit THandleExternalLiquidation();
-  }
-function onTRebalanceEvent(EventContext memory ctx) virtual external override {
-    emit TRebalance();
-  }
-function onTRedeemUnderlyingEvent(EventContext memory ctx, EulerCollateralVault$TRedeemUnderlyingEventParams memory inputs) virtual external override {
-    emit TRedeemUnderlying(EulerCollateralVault$EmitAllEvents$TRedeemUnderlying(inputs.amount, inputs.receiver));
-  }
-function onTRemoveAllowedTargetVaultEvent(EventContext memory ctx, EulerCollateralVault$TRemoveAllowedTargetVaultEventParams memory inputs) virtual external override {
-    emit TRemoveAllowedTargetVault(EulerCollateralVault$EmitAllEvents$TRemoveAllowedTargetVault(inputs.intermediateVault, inputs.targetVault, inputs.index));
-  }
 function onTRepayEvent(EventContext memory ctx, EulerCollateralVault$TRepayEventParams memory inputs) virtual external override {
     emit TRepay(EulerCollateralVault$EmitAllEvents$TRepay(inputs.repayAmount));
-  }
-function onTSetBeaconEvent(EventContext memory ctx, EulerCollateralVault$TSetBeaconEventParams memory inputs) virtual external override {
-    emit TSetBeacon(EulerCollateralVault$EmitAllEvents$TSetBeacon(inputs.targetVault, inputs.beacon));
-  }
-function onTSetCollateralVaultFactoryEvent(EventContext memory ctx, EulerCollateralVault$TSetCollateralVaultFactoryEventParams memory inputs) virtual external override {
-    emit TSetCollateralVaultFactory(EulerCollateralVault$EmitAllEvents$TSetCollateralVaultFactory(inputs.factory));
-  }
-function onTSetCollateralVaultLiquidatedEvent(EventContext memory ctx, EulerCollateralVault$TSetCollateralVaultLiquidatedEventParams memory inputs) virtual external override {
-    emit TSetCollateralVaultLiquidated(EulerCollateralVault$EmitAllEvents$TSetCollateralVaultLiquidated(inputs.collateralVault, inputs.liquidator));
-  }
-function onTSetExternalLiqBufferEvent(EventContext memory ctx, EulerCollateralVault$TSetExternalLiqBufferEventParams memory inputs) virtual external override {
-    emit TSetExternalLiqBuffer(EulerCollateralVault$EmitAllEvents$TSetExternalLiqBuffer(inputs.collateralAddress, inputs.liqBuffer));
-  }
-function onTSetIntermediateVaultEvent(EventContext memory ctx, EulerCollateralVault$TSetIntermediateVaultEventParams memory inputs) virtual external override {
-    emit TSetIntermediateVault(EulerCollateralVault$EmitAllEvents$TSetIntermediateVault(inputs.intermediateVault));
-  }
-function onTSetLtvEvent(EventContext memory ctx, EulerCollateralVault$TSetLtvEventParams memory inputs) virtual external override {
-    emit TSetLtv(EulerCollateralVault$EmitAllEvents$TSetLtv(inputs.intermediateVault, inputs.collateralVault, inputs.borrowLimit, inputs.liquidationLimit, inputs.rampDuration));
-  }
-function onTSetMaxLiqLtvEvent(EventContext memory ctx, EulerCollateralVault$TSetMaxLiqLtvEventParams memory inputs) virtual external override {
-    emit TSetMaxLiqLtv(EulerCollateralVault$EmitAllEvents$TSetMaxLiqLtv(inputs.collateralAddress, inputs.ltv));
-  }
-function onTSetOracleResolvedVaultEvent(EventContext memory ctx, EulerCollateralVault$TSetOracleResolvedVaultEventParams memory inputs) virtual external override {
-    emit TSetOracleResolvedVault(EulerCollateralVault$EmitAllEvents$TSetOracleResolvedVault(inputs.collateralAddress, inputs.allow));
-  }
-function onTSetOracleRouterEvent(EventContext memory ctx, EulerCollateralVault$TSetOracleRouterEventParams memory inputs) virtual external override {
-    emit TSetOracleRouter(EulerCollateralVault$EmitAllEvents$TSetOracleRouter(inputs.newOracleRouter));
-  }
-function onTSetTwyneLiqLtvEvent(EventContext memory ctx, EulerCollateralVault$TSetTwyneLiqLtvEventParams memory inputs) virtual external override {
-    emit TSetTwyneLiqLtv(EulerCollateralVault$EmitAllEvents$TSetTwyneLiqLtv(inputs.ltv));
-  }
-function onTSetVaultManagerEvent(EventContext memory ctx, EulerCollateralVault$TSetVaultManagerEventParams memory inputs) virtual external override {
-    emit TSetVaultManager(EulerCollateralVault$EmitAllEvents$TSetVaultManager(inputs.vaultManager));
-  }
-function onTSkimEvent(EventContext memory ctx, EulerCollateralVault$TSkimEventParams memory inputs) virtual external override {
-    emit TSkim(EulerCollateralVault$EmitAllEvents$TSkim(inputs.amount));
   }
 function onTTeleportEvent(EventContext memory ctx, EulerCollateralVault$TTeleportEventParams memory inputs) virtual external override {
     emit TTeleport(EulerCollateralVault$EmitAllEvents$TTeleport(inputs.toDeposit, inputs.toBorrow));
@@ -1924,36 +1277,13 @@ function onTWithdrawEvent(EventContext memory ctx, EulerCollateralVault$TWithdra
   }
 
   function allTriggers() view external returns (Trigger[] memory) {
-    Trigger[] memory triggers = new Trigger[](29);
-    triggers[0] = this.triggerOnInitializedEvent();
-    triggers[1] = this.triggerOnTAddAllowedTargetVaultEvent();
-    triggers[2] = this.triggerOnTBorrowEvent();
-    triggers[3] = this.triggerOnTCollateralVaultCreatedEvent();
-    triggers[4] = this.triggerOnTCollateralVaultInitializedEvent();
-    triggers[5] = this.triggerOnTControllerDisabledEvent();
-    triggers[6] = this.triggerOnTDepositEvent();
-    triggers[7] = this.triggerOnTDepositUnderlyingEvent();
-    triggers[8] = this.triggerOnTDoCallEvent();
-    triggers[9] = this.triggerOnTFactoryPauseEvent();
-    triggers[10] = this.triggerOnTHandleExternalLiquidationEvent();
-    triggers[11] = this.triggerOnTRebalanceEvent();
-    triggers[12] = this.triggerOnTRedeemUnderlyingEvent();
-    triggers[13] = this.triggerOnTRemoveAllowedTargetVaultEvent();
-    triggers[14] = this.triggerOnTRepayEvent();
-    triggers[15] = this.triggerOnTSetBeaconEvent();
-    triggers[16] = this.triggerOnTSetCollateralVaultFactoryEvent();
-    triggers[17] = this.triggerOnTSetCollateralVaultLiquidatedEvent();
-    triggers[18] = this.triggerOnTSetExternalLiqBufferEvent();
-    triggers[19] = this.triggerOnTSetIntermediateVaultEvent();
-    triggers[20] = this.triggerOnTSetLtvEvent();
-    triggers[21] = this.triggerOnTSetMaxLiqLtvEvent();
-    triggers[22] = this.triggerOnTSetOracleResolvedVaultEvent();
-    triggers[23] = this.triggerOnTSetOracleRouterEvent();
-    triggers[24] = this.triggerOnTSetTwyneLiqLtvEvent();
-    triggers[25] = this.triggerOnTSetVaultManagerEvent();
-    triggers[26] = this.triggerOnTSkimEvent();
-    triggers[27] = this.triggerOnTTeleportEvent();
-    triggers[28] = this.triggerOnTWithdrawEvent();
+    Trigger[] memory triggers = new Trigger[](6);
+    triggers[0] = this.triggerOnTBorrowEvent();
+    triggers[1] = this.triggerOnTDepositEvent();
+    triggers[2] = this.triggerOnTDepositUnderlyingEvent();
+    triggers[3] = this.triggerOnTRepayEvent();
+    triggers[4] = this.triggerOnTTeleportEvent();
+    triggers[5] = this.triggerOnTWithdrawEvent();
     return triggers;
   }
 }

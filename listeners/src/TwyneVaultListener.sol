@@ -12,7 +12,7 @@ contract TwyneVaultListener is
     EulerCollateralVault$OnTBorrowEvent,
     EulerCollateralVault$OnTRepayEvent,
     EulerCollateralVault$OnTTeleportEvent
-{
+    {
     // Event to track deposits with comprehensive indexing
     /// @custom:index vault_deposit_by_vault BTREE (vaultAddress, blockTimestamp);
     /// @custom:index vault_deposit_by_user BTREE (userAddress, blockTimestamp);

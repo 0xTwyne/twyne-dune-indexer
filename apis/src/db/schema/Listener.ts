@@ -3,6 +3,51 @@ import { pgEnum, pgTable as table } from "drizzle-orm/pg-core";
 import * as t from "drizzle-orm/pg-core";
 import { db, types } from "@duneanalytics/sim-idx";
 
+export const answerUpdated = table("answer_updated", {
+  current: db.int256('current'),
+  roundId: db.uint256('round_id'),
+  updatedAt: db.uint256('updated_at'),
+  txnHash: db.bytes32('txn_hash'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  aggregator: db.address('aggregator'),
+})
+
+export const factoryHandleExternalLiquidation = table("factory_handle_external_liquidation", {
+  factoryAddress: db.address('factory_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+})
+
+export const factorySetCollateralVaultLiquidated = table("factory_set_collateral_vault_liquidated", {
+  factoryAddress: db.address('factory_address'),
+  collateralVault: db.address('collateral_vault'),
+  liquidatorAddress: db.address('liquidator_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  creditReserved: db.uint256('credit_reserved'),
+  debt: db.uint256('debt'),
+  totalCollateral: db.uint256('total_collateral'),
+  userOwnedCollateral: db.uint256('user_owned_collateral'),
+  twyneLiqLtv: db.uint256('twyne_liq_ltv'),
+})
+
+export const preLiquidationState = table("pre_liquidation_state", {
+  factoryAddress: db.address('factory_address'),
+  collateralVault: db.address('collateral_vault'),
+  liquidatorAddress: db.address('liquidator_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  preMaxRelease: db.uint256('pre_max_release'),
+  preMaxRepay: db.uint256('pre_max_repay'),
+  preTotalAssetsDepositedOrReserved: db.uint256('pre_total_assets_deposited_or_reserved'),
+  preUserOwnedCollateral: db.uint256('pre_user_owned_collateral'),
+  preTwyneLiqLtv: db.uint256('pre_twyne_liq_ltv'),
+})
+
 export const vaultBorrow = table("vault_borrow", {
   vaultAddress: db.address('vault_address'),
   targetAmount: db.uint256('target_amount'),
