@@ -23,6 +23,8 @@ contract TwyneVaultListener is
     
     // Array to keep track of active vault addresses for iteration
     address[] private activeVaultsList;
+
+    uint256 logIndex;
     // Event to track deposits with comprehensive indexing
     /// @custom:index vault_deposit_by_vault BTREE (vaultAddress, blockTimestamp);
     /// @custom:index vault_deposit_by_user BTREE (userAddress, blockTimestamp);
@@ -34,6 +36,7 @@ contract TwyneVaultListener is
         uint64 blockNumber;
         uint64 blockTimestamp;
         bytes32 txnHash;
+        uint256 logIndex;
     }
 
     // Event to track underlying deposits
@@ -47,6 +50,7 @@ contract TwyneVaultListener is
         uint64 blockNumber;
         uint64 blockTimestamp;
         bytes32 txnHash;
+        uint256 logIndex;
     }
 
     // Event to track withdrawals
@@ -61,6 +65,7 @@ contract TwyneVaultListener is
         uint64 blockNumber;
         uint64 blockTimestamp;
         bytes32 txnHash;
+        uint256 logIndex;
     }
 
     // Event to track borrowing
@@ -75,6 +80,7 @@ contract TwyneVaultListener is
         uint64 blockNumber;
         uint64 blockTimestamp;
         bytes32 txnHash;
+        uint256 logIndex;
     }
 
     // Event to track repayments
@@ -88,6 +94,7 @@ contract TwyneVaultListener is
         uint64 blockNumber;
         uint64 blockTimestamp;
         bytes32 txnHash;
+        uint256 logIndex;
     }
 
     // Event to track teleport operations (combined deposit/borrow)
@@ -102,6 +109,7 @@ contract TwyneVaultListener is
         uint64 blockNumber;
         uint64 blockTimestamp;
         bytes32 txnHash;
+        uint256 logIndex;
     }
 
     /// @custom:index position_snapshot_by_vault BTREE (vaultAddress, blockTimestamp);
@@ -123,6 +131,7 @@ contract TwyneVaultListener is
         uint256 userOwnedCollateralUsd;
         uint64 blockNumber;
         uint64 blockTimestamp;
+        uint256 logIndex;
     }
 
     function _getQuote(address vaultAddress, uint256 inAmount) internal returns (uint256) {
@@ -167,7 +176,8 @@ contract TwyneVaultListener is
             maxReleaseUsd: data.maxReleaseUsd,
             maxRepayUsd: data.maxRepayUsd,
             totalAssetsDepositedOrReservedUsd: data.totalAssetsDepositedOrReservedUsd,
-            userOwnedCollateralUsd: data.userOwnedCollateralUsd
+            userOwnedCollateralUsd: data.userOwnedCollateralUsd,
+            logIndex: logIndex
         });
     }
 
@@ -176,6 +186,7 @@ contract TwyneVaultListener is
         EulerCollateralVault$TDepositEventParams memory inputs
     ) external override {
         address vaultAddress = ctx.txn.call.callee();
+        logIndex += 1;
         
         // Cache the vault address for end-of-block processing
         if (!activeVaultsInBlock[vaultAddress]) {
@@ -189,7 +200,8 @@ contract TwyneVaultListener is
             userAddress: ctx.txn.call.caller(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
-            txnHash: ctx.txn.hash()
+            txnHash: ctx.txn.hash(),
+            logIndex: logIndex
         }));
     }
 
@@ -198,6 +210,7 @@ contract TwyneVaultListener is
         EulerCollateralVault$TDepositUnderlyingEventParams memory inputs
     ) external override {
         address vaultAddress = ctx.txn.call.callee();
+        logIndex += 1;
         
         // Cache the vault address for end-of-block processing
         if (!activeVaultsInBlock[vaultAddress]) {
@@ -211,7 +224,8 @@ contract TwyneVaultListener is
             userAddress: ctx.txn.call.caller(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
-            txnHash: ctx.txn.hash()
+            txnHash: ctx.txn.hash(),
+            logIndex: logIndex
         }));
     }
 
@@ -220,6 +234,7 @@ contract TwyneVaultListener is
         EulerCollateralVault$TWithdrawEventParams memory inputs
     ) external override {
         address vaultAddress = ctx.txn.call.callee();
+        logIndex += 1;
         
         // Cache the vault address for end-of-block processing
         if (!activeVaultsInBlock[vaultAddress]) {
@@ -234,7 +249,8 @@ contract TwyneVaultListener is
             userAddress: ctx.txn.call.caller(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
-            txnHash: ctx.txn.hash()
+            txnHash: ctx.txn.hash(),
+            logIndex: logIndex
         }));
     }
 
@@ -243,7 +259,8 @@ contract TwyneVaultListener is
         EulerCollateralVault$TBorrowEventParams memory inputs
     ) external override {
         address vaultAddress = ctx.txn.call.callee();
-        
+        logIndex += 1;
+
         // Cache the vault address for end-of-block processing
         if (!activeVaultsInBlock[vaultAddress]) {
             activeVaultsInBlock[vaultAddress] = true;
@@ -257,7 +274,8 @@ contract TwyneVaultListener is
             borrowerAddress: ctx.txn.call.caller(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
-            txnHash: ctx.txn.hash()
+            txnHash: ctx.txn.hash(),
+            logIndex: logIndex
         }));
     }
 
@@ -266,7 +284,8 @@ contract TwyneVaultListener is
         EulerCollateralVault$TRepayEventParams memory inputs
     ) external override {
         address vaultAddress = ctx.txn.call.callee();
-        
+        logIndex += 1;
+
         // Cache the vault address for end-of-block processing
         if (!activeVaultsInBlock[vaultAddress]) {
             activeVaultsInBlock[vaultAddress] = true;
@@ -279,7 +298,8 @@ contract TwyneVaultListener is
             userAddress: ctx.txn.call.caller(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
-            txnHash: ctx.txn.hash()
+            txnHash: ctx.txn.hash(),
+            logIndex: logIndex
         }));
     }
 
@@ -288,7 +308,8 @@ contract TwyneVaultListener is
         EulerCollateralVault$TTeleportEventParams memory inputs
     ) external override {
         address vaultAddress = ctx.txn.call.callee();
-        
+        logIndex += 1;
+
         // Cache the vault address for end-of-block processing
         if (!activeVaultsInBlock[vaultAddress]) {
             activeVaultsInBlock[vaultAddress] = true;
@@ -302,13 +323,15 @@ contract TwyneVaultListener is
             userAddress: ctx.txn.call.caller(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
-            txnHash: ctx.txn.hash()
+            txnHash: ctx.txn.hash(),
+            logIndex: logIndex
         }));
     }
 
     function onLiquidateFunction(
         FunctionContext memory ctx
     ) external override {
+        logIndex += 1;
         PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee());
         emit PositionSnapshot(snapshot);
     }
