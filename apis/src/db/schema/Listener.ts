@@ -23,6 +23,13 @@ export const externalLiquidation = table("external_liquidation", {
   collateral: db.address('collateral'),
   repayAssets: db.uint256('repay_assets'),
   yieldBalance: db.uint256('yield_balance'),
+  repayAssetsUsd: db.uint256('repay_assets_usd'),
+  yieldBalanceUsd: db.uint256('yield_balance_usd'),
+  collateralAmount: db.uint256('collateral_amount'),
+  debtAmount: db.uint256('debt_amount'),
+  collateralAmountUsd: db.uint256('collateral_amount_usd'),
+  debtAmountUsd: db.uint256('debt_amount_usd'),
+  liqLtv: db.uint256('liq_ltv'),
 })
 
 export const factoryHandleExternalLiquidation = table("factory_handle_external_liquidation", {

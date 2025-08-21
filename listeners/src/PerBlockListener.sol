@@ -59,19 +59,21 @@ contract PerBlockListener is Raw$OnBlock {
 
     function onBlock(RawBlockContext memory ctx) external override {
         // address[] memory vaults = getAllVaults();
-        address[] memory vaults = new address[](5);
-        address eeUsdc = 0x9B58505aAa6e15D6A3cB15f533634332a60F29D1;
-        address eeWeth = 0xB49414341e06986FE83f17c971cCA14bD4362aF0;
-        address eUsdc = 0x0A1a3b5f2041F33522C4efc754a7D096f880eE16;
-        address eWeth = 0x859160DB5841E5cfB8D3f144C6b3381A85A4b410;
-        address eUsds = 0x556d518FDFDCC4027A3A1388699c5E11AC201D8b;
-        vaults[0] = eeUsdc;
-        vaults[1] = eeWeth;
-        vaults[2] = eUsdc;
-        vaults[3] = eWeth;
-        vaults[4] = eUsds;
-        for (uint256 i = 0; i < vaults.length; i++) {
-            _captureVaultData(vaults[i], ctx.blockNumber);
+        if (ctx.blockNumber % 100 == 0) {
+            address[] memory vaults = new address[](5);
+            address eeUsdc = 0x9B58505aAa6e15D6A3cB15f533634332a60F29D1;
+            address eeWeth = 0xB49414341e06986FE83f17c971cCA14bD4362aF0;
+            address eUsdc = 0x0A1a3b5f2041F33522C4efc754a7D096f880eE16;
+            address eWeth = 0x859160DB5841E5cfB8D3f144C6b3381A85A4b410;
+            address eUsds = 0x556d518FDFDCC4027A3A1388699c5E11AC201D8b;
+            vaults[0] = eeUsdc;
+            vaults[1] = eeWeth;
+            vaults[2] = eUsdc;
+            vaults[3] = eWeth;
+            vaults[4] = eUsds;
+            for (uint256 i = 0; i < vaults.length; i++) {
+                _captureVaultData(vaults[i], ctx.blockNumber);
+            }
         }
     }
 

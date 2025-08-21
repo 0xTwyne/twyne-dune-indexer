@@ -32,4 +32,28 @@ interface IEVault {
         returns (
             address
         );
+    function balanceOf(address user)
+        external
+        view
+        returns (
+            uint256
+        );
+    function debtOf(address user)
+        external
+        view
+        returns (
+            uint256
+        );
+    function LTVLiquidation(address debtVaultAddress)
+        external
+        view
+        returns (
+            uint256
+        );
+    function convertToAssets(uint256 shares)
+        external
+        view
+        returns (
+            uint256
+        );
 }
