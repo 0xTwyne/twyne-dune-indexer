@@ -42,6 +42,8 @@ export const factoryHandleExternalLiquidation = table("factory_handle_external_l
 export const factorySetCollateralVaultLiquidated = table("factory_set_collateral_vault_liquidated", {
   factoryAddress: db.address('factory_address'),
   collateralVault: db.address('collateral_vault'),
+  creditVault: db.address('credit_vault'),
+  debtVault: db.address('debt_vault'),
   liquidatorAddress: db.address('liquidator_address'),
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
@@ -59,6 +61,8 @@ export const factorySetCollateralVaultLiquidated = table("factory_set_collateral
 
 export const positionSnapshot = table("position_snapshot", {
   vaultAddress: db.address('vault_address'),
+  creditVault: db.address('credit_vault'),
+  debtVault: db.address('debt_vault'),
   maxRelease: db.uint256('max_release'),
   maxRepay: db.uint256('max_repay'),
   totalAssetsDepositedOrReserved: db.uint256('total_assets_deposited_or_reserved'),
@@ -66,6 +70,10 @@ export const positionSnapshot = table("position_snapshot", {
   twyneLiqLtv: db.uint256('twyne_liq_ltv'),
   canLiquidate: t.boolean('can_liquidate'),
   isExternallyLiquidated: t.boolean('is_externally_liquidated'),
+  maxReleaseUsd: db.uint256('max_release_usd'),
+  maxRepayUsd: db.uint256('max_repay_usd'),
+  totalAssetsDepositedOrReservedUsd: db.uint256('total_assets_deposited_or_reserved_usd'),
+  userOwnedCollateralUsd: db.uint256('user_owned_collateral_usd'),
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
 })
