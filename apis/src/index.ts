@@ -2,6 +2,7 @@ import { eq, desc, sql, count, and, gte, lte } from "drizzle-orm";
 import { 
   vaultCreated, 
   vaultMetrics,
+  positionSnapshot,
   factorySetCollateralVaultLiquidated,
   answerUpdated,
 } from "./db/schema/Listener";
@@ -42,6 +43,164 @@ app.get("/api/collateralVaults", async (c) => {
   } catch (e) {
     console.error("Database operation failed:", e);
     return Response.json({ error: (e as Error).message }, { status: 500 });
+  }
+});
+
+// Get latest position snapshot for each vault address
+app.get("/api/collateralVaults/latest-snapshots", async (c) => {
+  try {
+    const client = db.client(c);
+    
+    // Validate and sanitize query parameters
+    const limitParam = c.req.query("limit") || "50";
+    const offsetParam = c.req.query("offset") || "0";
+    const canLiquidateFilter = c.req.query("canLiquidate");
+    const isExternallyLiquidatedFilter = c.req.query("isExternallyLiquidated");
+    
+    // Validate limit parameter
+    const parsedLimit = parseInt(limitParam);
+    if (isNaN(parsedLimit) || parsedLimit < 1) {
+      return Response.json({ error: "Invalid limit parameter. Must be a positive integer." }, { status: 400 });
+    }
+    const limit = Math.min(parsedLimit, 100);
+    
+    // Validate offset parameter
+    const parsedOffset = parseInt(offsetParam);
+    if (isNaN(parsedOffset) || parsedOffset < 0) {
+      return Response.json({ error: "Invalid offset parameter. Must be a non-negative integer." }, { status: 400 });
+    }
+    const offset = parsedOffset;
+    
+    // Build additional filter conditions
+    const additionalConditions = [];
+    
+    if (canLiquidateFilter !== undefined) {
+      const canLiquidateValue = canLiquidateFilter.toLowerCase() === 'true';
+      additionalConditions.push(sql`can_liquidate = ${canLiquidateValue}`);
+    }
+    
+    if (isExternallyLiquidatedFilter !== undefined) {
+      const isExternallyLiquidatedValue = isExternallyLiquidatedFilter.toLowerCase() === 'true';
+      additionalConditions.push(sql`is_externally_liquidated = ${isExternallyLiquidatedValue}`);
+    }
+    
+    // Build the base subquery for latest snapshots
+    let baseSubquery = sql`
+      SELECT vault_address, MAX(block_timestamp) as max_timestamp
+      FROM ${positionSnapshot}
+    `;
+    
+    // Add filters to subquery if needed
+    if (additionalConditions.length > 0) {
+      baseSubquery = sql`${baseSubquery} WHERE ${sql.join(additionalConditions, sql` AND `)}`;
+    }
+    
+    baseSubquery = sql`${baseSubquery} GROUP BY vault_address`;
+    
+    // Get the latest position snapshot for each vault address
+    const latestSnapshots = await client
+      .select()
+      .from(positionSnapshot)
+      .where(
+        sql`(vault_address, block_timestamp) IN (${baseSubquery})`
+      )
+      .orderBy(desc(positionSnapshot.blockTimestamp))
+      .limit(limit)
+      .offset(offset);
+
+    // Get total count of unique vault addresses with snapshots (applying same filters)
+    let countQuery = sql`SELECT COUNT(DISTINCT vault_address) as count FROM ${positionSnapshot}`;
+    if (additionalConditions.length > 0) {
+      countQuery = sql`${countQuery} WHERE ${sql.join(additionalConditions, sql` AND `)}`;
+    }
+    
+    const totalUniqueVaultsResult = await client.execute(countQuery);
+    const totalUniqueVaults = Number(totalUniqueVaultsResult.rows[0]?.count || 0);
+
+    return Response.json({
+      latestSnapshots,
+      count: latestSnapshots.length,
+      totalUniqueVaults,
+      limit,
+      offset,
+      filters: {
+        canLiquidate: canLiquidateFilter,
+        isExternallyLiquidated: isExternallyLiquidatedFilter
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("Latest snapshots query failed:", e);
+    console.error("Cause:", (e as Error).cause);
+    return Response.json({ 
+      error: "Failed to fetch latest position snapshots",
+      details: (e as Error).message 
+    }, { status: 500 });
+  }
+});
+
+// Get latest position snapshot for a specific vault address
+app.get("/api/collateralVaults/:address/latest-snapshot", async (c) => {
+  try {
+    const client = db.client(c);
+    const vaultAddressParam = c.req.param("address");
+
+    // Validate vault address parameter
+    if (!vaultAddressParam) {
+      return Response.json({ error: "Vault address is required" }, { status: 400 });
+    }
+
+    // Remove '0x' prefix if present and validate hex format
+    const cleanAddress = vaultAddressParam.startsWith('0x') 
+      ? vaultAddressParam.slice(2) 
+      : vaultAddressParam;
+
+    // Check if it's a valid hex string (only contains 0-9, a-f, A-F)
+    if (!/^[0-9a-fA-F]+$/.test(cleanAddress)) {
+      return Response.json(
+        { error: "Vault address must be a valid hex string" },
+        { status: 400 }
+      );
+    }
+
+    // Check if it's exactly 40 characters (20 bytes when converted)
+    if (cleanAddress.length !== 40) {
+      return Response.json(
+        { error: "Vault address must be exactly 20 bytes (40 hex characters)" },
+        { status: 400 }
+      );
+    }
+
+    // Convert to proper Address type
+    const vaultAddress = Address.from(cleanAddress);
+
+    // Get the latest snapshot for this specific vault
+    const latestSnapshot = await client
+      .select()
+      .from(positionSnapshot)
+      .where(eq(positionSnapshot.vaultAddress, vaultAddress))
+      .orderBy(desc(positionSnapshot.blockTimestamp))
+      .limit(1);
+
+    if (latestSnapshot.length === 0) {
+      return Response.json(
+        { error: "No position snapshots found for this vault address" },
+        { status: 404 }
+      );
+    }
+
+    return Response.json({
+      vaultAddress: vaultAddressParam,
+      latestSnapshot: latestSnapshot[0],
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("Latest snapshot query failed:", e);
+    console.error("Cause:", (e as Error).cause);
+    return Response.json({ 
+      error: "Failed to fetch latest position snapshot",
+      details: (e as Error).message 
+    }, { status: 500 });
   }
 });
 
