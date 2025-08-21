@@ -4,6 +4,8 @@ pragma solidity ^0.8.13;
 import "sim-idx-sol/Simidx.sol";
 import "sim-idx-generated/Generated.sol";
 import {IEulerCollateralVault} from "./interfaces/IEulerCollateralVault.sol";
+import {IEulerRouter} from "./interfaces/IEulerRouter.sol";
+import {IEVault} from "./interfaces/IEVault.sol";
 
 contract TwyneVaultListener is 
     EulerCollateralVault$OnTDepositEvent,
@@ -12,6 +14,7 @@ contract TwyneVaultListener is
     EulerCollateralVault$OnTBorrowEvent,
     EulerCollateralVault$OnTRepayEvent,
     EulerCollateralVault$OnTTeleportEvent,
+    EulerCollateralVault$OnLiquidateFunction,
     Raw$OnBlock
     {
     
@@ -105,6 +108,8 @@ contract TwyneVaultListener is
     event PositionSnapshot(PositionSnapshotData);
     struct PositionSnapshotData {
         address vaultAddress;
+        address creditVault;
+        address debtVault;
         uint256 maxRelease;
         uint256 maxRepay;
         uint256 totalAssetsDepositedOrReserved;
@@ -112,31 +117,57 @@ contract TwyneVaultListener is
         uint256 twyneLiqLtv;
         bool canLiquidate;
         bool isExternallyLiquidated;
+        uint256 maxReleaseUsd;
+        uint256 maxRepayUsd;
+        uint256 totalAssetsDepositedOrReservedUsd;
+        uint256 userOwnedCollateralUsd;
         uint64 blockNumber;
         uint64 blockTimestamp;
     }
 
-    function getPositionSnapshot(address vaultAddress) internal view returns (PositionSnapshotData memory) {
+    function _getQuote(address vaultAddress, uint256 inAmount) internal returns (uint256) {
+        try IEulerRouter(IEVault(vaultAddress).oracle()).getQuote(inAmount, IEVault(vaultAddress).asset(), IEVault(vaultAddress).unitOfAccount()) returns (uint256 quote) {
+            return quote;
+        } catch {
+            return 0;
+        }
+    }
+
+    function getPositionSnapshot(address vaultAddress) internal returns (PositionSnapshotData memory) {
+        PositionSnapshotData memory data;
         IEulerCollateralVault collateralVault = IEulerCollateralVault(vaultAddress);
-        uint256 maxRelease = collateralVault.maxRelease();
-        uint256 maxRepay = collateralVault.maxRepay();
-        uint256 totalAssetsDepositedOrReserved = collateralVault.totalAssetsDepositedOrReserved();
-        uint256 userOwnedCollateral = totalAssetsDepositedOrReserved - maxRelease;
-        bool canLiquidate = collateralVault.canLiquidate();
-        bool isExternallyLiquidated = collateralVault.isExternallyLiquidated();
-        uint256 twyneLiqLtv = collateralVault.twyneLiqLTV();
+        data.creditVault = collateralVault.asset();
+        data.debtVault = collateralVault.targetVault();
+        data.maxRelease = collateralVault.maxRelease();
+        data.maxRepay = collateralVault.maxRepay();
+        data.totalAssetsDepositedOrReserved = collateralVault.totalAssetsDepositedOrReserved();
+        data.userOwnedCollateral = data.totalAssetsDepositedOrReserved - data.maxRelease;
+        data.canLiquidate = collateralVault.canLiquidate();
+        data.isExternallyLiquidated = collateralVault.isExternallyLiquidated();
+        data.twyneLiqLtv = collateralVault.twyneLiqLTV();
+
+        data.maxReleaseUsd = _getQuote(data.creditVault, data.maxRelease);
+        data.maxRepayUsd = _getQuote(data.debtVault, data.maxRepay);
+        data.totalAssetsDepositedOrReservedUsd = _getQuote(data.creditVault, data.totalAssetsDepositedOrReserved);
+        data.userOwnedCollateralUsd = _getQuote(data.creditVault, data.userOwnedCollateral);
 
         return PositionSnapshotData({
             vaultAddress: vaultAddress,
-            maxRelease: maxRelease,
-            maxRepay: maxRepay,
-            totalAssetsDepositedOrReserved: totalAssetsDepositedOrReserved,
-            userOwnedCollateral: userOwnedCollateral,
-            twyneLiqLtv: twyneLiqLtv,
-            canLiquidate: canLiquidate,
-            isExternallyLiquidated: isExternallyLiquidated,
+            creditVault: data.creditVault,
+            debtVault: data.debtVault,
+            maxRelease: data.maxRelease,
+            maxRepay: data.maxRepay,
+            totalAssetsDepositedOrReserved: data.totalAssetsDepositedOrReserved,
+            userOwnedCollateral: data.userOwnedCollateral,
+            twyneLiqLtv: data.twyneLiqLtv,
+            canLiquidate: data.canLiquidate,
+            isExternallyLiquidated: data.isExternallyLiquidated,
             blockNumber: uint64(block.number),
-            blockTimestamp: uint64(block.timestamp)
+            blockTimestamp: uint64(block.timestamp),
+            maxReleaseUsd: data.maxReleaseUsd,
+            maxRepayUsd: data.maxRepayUsd,
+            totalAssetsDepositedOrReservedUsd: data.totalAssetsDepositedOrReservedUsd,
+            userOwnedCollateralUsd: data.userOwnedCollateralUsd
         });
     }
 
@@ -275,6 +306,13 @@ contract TwyneVaultListener is
         }));
     }
 
+    function onLiquidateFunction(
+        FunctionContext memory ctx
+    ) external override {
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee());
+        emit PositionSnapshot(snapshot);
+    }
+
     function onBlock(RawBlockContext memory ctx) external override {
         // Process all vaults that emitted events during this block
         if (activeVaultsList.length > 0) {
@@ -310,13 +348,14 @@ contract TwyneVaultListener is
 
 
     function getTriggers() external view returns (Trigger[] memory) {
-        Trigger[] memory triggers = new Trigger[](6);
+        Trigger[] memory triggers = new Trigger[](7);
         triggers[0] = this.triggerOnTDepositEvent();
         triggers[1] = this.triggerOnTDepositUnderlyingEvent();
         triggers[2] = this.triggerOnTWithdrawEvent();
         triggers[3] = this.triggerOnTBorrowEvent();
         triggers[4] = this.triggerOnTRepayEvent();
         triggers[5] = this.triggerOnTTeleportEvent();
+        triggers[6] = this.triggerOnLiquidateFunction();
         return triggers;
     }
     
