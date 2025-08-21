@@ -4,6 +4,8 @@ pragma solidity ^0.8.13;
 import "sim-idx-sol/Simidx.sol";
 import "sim-idx-generated/Generated.sol";
 import {IEulerCollateralVault} from "./interfaces/IEulerCollateralVault.sol";
+import {IEulerRouter} from "./interfaces/IEulerRouter.sol";
+import {IEVault} from "./interfaces/IEVault.sol";
 
 contract TwyneFactoryListener is 
         CollateralVaultFactory$OnTCollateralVaultCreatedEvent,
@@ -59,6 +61,18 @@ contract TwyneFactoryListener is
         uint256 totalCollateral;
         uint256 userOwnedCollateral;
         uint256 twyneLiqLtv;
+        uint256 creditReservedUsd;
+        uint256 debtUsd;
+        uint256 totalCollateralUsd;
+        uint256 userOwnedCollateralUsd;
+    }
+
+    function _getQuote(address vaultAddress, uint256 inAmount) internal returns (uint256) {
+        try IEulerRouter(IEVault(vaultAddress).oracle()).getQuote(inAmount, IEVault(vaultAddress).asset(), IEVault(vaultAddress).unitOfAccount()) returns (uint256 quote) {
+            return quote;
+        } catch {
+            return 0;
+        }
     }
 
     function onTCollateralVaultCreatedEvent(
@@ -100,16 +114,42 @@ contract TwyneFactoryListener is
         }));
     }
 
+    // Struct to hold intermediate processing data to avoid stack too deep errors
+    struct CollateralLiquidationProcessingData {
+        address collateralVault;
+        uint256 maxRelease;
+        uint256 maxRepay;
+        uint256 totalAssetsDepositedOrReserved;
+        uint256 userOwnedCollateral;
+        uint256 twyneLiqLtv;
+        address underlyingVaultAddress;
+        address debtVaultAddress;
+        uint256 maxReleaseUsd;
+        uint256 maxRepayUsd;
+        uint256 totalAssetsDepositedOrReservedUsd;
+        uint256 userOwnedCollateralUsd;
+    }
+
     function onTSetCollateralVaultLiquidatedEvent(
         EventContext memory ctx,
         CollateralVaultFactory$TSetCollateralVaultLiquidatedEventParams memory inputs
     ) external override { 
-        address collateralVault = IEulerCollateralVault(inputs.collateralVault).asset();
-        uint256 maxRelease = IEulerCollateralVault(inputs.collateralVault).maxRelease();
-        uint256 maxRepay = IEulerCollateralVault(inputs.collateralVault).maxRepay();
-        uint256 totalAssetsDepositedOrReserved = IEulerCollateralVault(inputs.collateralVault).totalAssetsDepositedOrReserved();
-        uint256 userOwnedCollateral = totalAssetsDepositedOrReserved - maxRelease;
-        uint256 twyneLiqLtv = IEulerCollateralVault(inputs.collateralVault).twyneLiqLTV();
+        // Use CollateralLiquidationProcessingData struct to avoid stack too deep errors
+        CollateralLiquidationProcessingData memory data;
+        
+        // Populate processing data
+        data.collateralVault = IEulerCollateralVault(inputs.collateralVault).asset();
+        data.maxRelease = IEulerCollateralVault(inputs.collateralVault).maxRelease();
+        data.maxRepay = IEulerCollateralVault(inputs.collateralVault).maxRepay();
+        data.totalAssetsDepositedOrReserved = IEulerCollateralVault(inputs.collateralVault).totalAssetsDepositedOrReserved();
+        data.userOwnedCollateral = data.totalAssetsDepositedOrReserved - data.maxRelease;
+        data.twyneLiqLtv = IEulerCollateralVault(inputs.collateralVault).twyneLiqLTV();
+        data.debtVaultAddress = IEulerCollateralVault(inputs.collateralVault).targetVault();
+        data.maxReleaseUsd = _getQuote(data.collateralVault, data.maxRelease);
+        data.maxRepayUsd = _getQuote(data.debtVaultAddress, data.maxRepay);
+        data.totalAssetsDepositedOrReservedUsd = _getQuote(data.collateralVault, data.totalAssetsDepositedOrReserved);
+        data.userOwnedCollateralUsd = _getQuote(data.collateralVault, data.userOwnedCollateral);
+
         emit FactorySetCollateralVaultLiquidated(FactorySetCollateralVaultLiquidatedData({
             factoryAddress: ctx.txn.call.callee(),
             collateralVault: inputs.collateralVault,
@@ -117,13 +157,54 @@ contract TwyneFactoryListener is
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
             txnHash: ctx.txn.hash(),
-            creditReserved: maxRelease,
-            debt: maxRepay,
-            totalCollateral: totalAssetsDepositedOrReserved,
-            userOwnedCollateral: userOwnedCollateral,
-            twyneLiqLtv: twyneLiqLtv
+            creditReserved: data.maxRelease,
+            debt: data.maxRepay,
+            totalCollateral: data.totalAssetsDepositedOrReserved,
+            userOwnedCollateral: data.userOwnedCollateral,
+            twyneLiqLtv: data.twyneLiqLtv,
+            creditReservedUsd: data.maxReleaseUsd,
+            debtUsd: data.maxRepayUsd,
+            totalCollateralUsd: data.totalAssetsDepositedOrReservedUsd,
+            userOwnedCollateralUsd: data.userOwnedCollateralUsd
         }));
     }
+
+    // function preSetCollateralVaultLiquidatedFunction(
+    //     PreFunctionContext memory ctx,
+    //     CollateralVaultFactory$SetCollateralVaultLiquidatedFunctionInputs memory inputs
+    // ) external override {
+    // 
+    //     uint256 maxRelease = IEulerCollateralVault(ctx.txn.call.callee()).maxRelease();
+    //     uint256 maxRepay = IEulerCollateralVault(ctx.txn.call.callee()).maxRepay();
+    //     uint256 totalAssetsDepositedOrReserved = IEulerCollateralVault(ctx.txn.call.callee()).totalAssetsDepositedOrReserved();
+    //     uint256 userOwnedCollateral = totalAssetsDepositedOrReserved - maxRelease;
+    //     uint256 twyneLiqLtv = IEulerCollateralVault(ctx.txn.call.callee()).twyneLiqLTV();
+    //     address underlyingVaultAddress = IEulerCollateralVault(ctx.txn.call.callee()).asset();
+    //     address debtVaultAddress = IEulerCollateralVault(ctx.txn.call.callee()).targetVault();
+    // 
+    //     uint256 maxReleaseUsd = _getQuote(underlyingVaultAddress, maxRelease);
+    //     uint256 maxRepayUsd = _getQuote(debtVaultAddress, maxRepay);
+    //     uint256 totalAssetsDepositedOrReservedUsd = _getQuote(underlyingVaultAddress, totalAssetsDepositedOrReserved);
+    //     uint256 userOwnedCollateralUsd = _getQuote(underlyingVaultAddress, userOwnedCollateral);
+    // 
+    //     emit FactorySetCollateralVaultLiquidated(FactorySetCollateralVaultLiquidatedData({
+    //         factoryAddress: ctx.txn.call.callee(),
+    //         collateralVault: inputs.collateralVault,
+    //         liquidatorAddress: inputs.liquidator,
+    //         blockNumber: uint64(block.number),
+    //         blockTimestamp: uint64(block.timestamp),
+    //         txnHash: ctx.txn.hash(),
+    //         creditReserved: maxRelease,
+    //         debt: maxRepay,
+    //         totalCollateral: totalAssetsDepositedOrReserved,
+    //         userOwnedCollateral: userOwnedCollateral,
+    //         twyneLiqLtv: twyneLiqLtv,
+    //         creditReservedUsd: maxReleaseUsd,
+    //         debtUsd: maxRepayUsd,
+    //         totalCollateralUsd: totalAssetsDepositedOrReservedUsd,
+    //         userOwnedCollateralUsd: userOwnedCollateralUsd
+    //     }));
+    // }
 
     function getTriggers() external view returns (Trigger[] memory) {
         Trigger[] memory triggers = new Trigger[](3);

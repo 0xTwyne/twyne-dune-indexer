@@ -51,6 +51,10 @@ export const factorySetCollateralVaultLiquidated = table("factory_set_collateral
   totalCollateral: db.uint256('total_collateral'),
   userOwnedCollateral: db.uint256('user_owned_collateral'),
   twyneLiqLtv: db.uint256('twyne_liq_ltv'),
+  creditReservedUsd: db.uint256('credit_reserved_usd'),
+  debtUsd: db.uint256('debt_usd'),
+  totalCollateralUsd: db.uint256('total_collateral_usd'),
+  userOwnedCollateralUsd: db.uint256('user_owned_collateral_usd'),
 })
 
 export const positionSnapshot = table("position_snapshot", {
@@ -71,7 +75,6 @@ export const preExternalLiquidation = table("pre_external_liquidation", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
-  liquidator: db.address('liquidator'),
   violator: db.address('violator'),
   collateral: db.address('collateral'),
   collateralAmount: db.uint256('collateral_amount'),
