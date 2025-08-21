@@ -76,6 +76,7 @@ export const positionSnapshot = table("position_snapshot", {
   userOwnedCollateralUsd: db.uint256('user_owned_collateral_usd'),
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
+  logIndex: db.uint256('log_index'),
 })
 
 export const preExternalLiquidation = table("pre_external_liquidation", {
@@ -100,6 +101,7 @@ export const vaultBorrow = table("vault_borrow", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
+  logIndex: db.uint256('log_index'),
 })
 
 export const vaultCreated = table("vault_created", {
@@ -125,6 +127,7 @@ export const vaultDeposit = table("vault_deposit", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
+  logIndex: db.uint256('log_index'),
 })
 
 export const vaultDepositUnderlying = table("vault_deposit_underlying", {
@@ -134,6 +137,7 @@ export const vaultDepositUnderlying = table("vault_deposit_underlying", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
+  logIndex: db.uint256('log_index'),
 })
 
 export const vaultMetrics = table("vault_metrics", {
@@ -152,6 +156,7 @@ export const vaultRepay = table("vault_repay", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
+  logIndex: db.uint256('log_index'),
 })
 
 export const vaultTeleport = table("vault_teleport", {
@@ -162,6 +167,7 @@ export const vaultTeleport = table("vault_teleport", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
+  logIndex: db.uint256('log_index'),
 })
 
 export const vaultWithdraw = table("vault_withdraw", {
@@ -172,4 +178,5 @@ export const vaultWithdraw = table("vault_withdraw", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   txnHash: db.bytes32('txn_hash'),
+  logIndex: db.uint256('log_index'),
 })
