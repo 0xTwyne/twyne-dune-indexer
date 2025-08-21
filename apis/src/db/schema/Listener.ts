@@ -66,6 +66,21 @@ export const positionSnapshot = table("position_snapshot", {
   blockTimestamp: db.uint64('block_timestamp'),
 })
 
+export const preExternalLiquidation = table("pre_external_liquidation", {
+  vaultAddress: db.address('vault_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  liquidator: db.address('liquidator'),
+  violator: db.address('violator'),
+  collateral: db.address('collateral'),
+  collateralAmount: db.uint256('collateral_amount'),
+  debtAmount: db.uint256('debt_amount'),
+  collateralAmountUsd: db.uint256('collateral_amount_usd'),
+  debtAmountUsd: db.uint256('debt_amount_usd'),
+  liqLtv: db.uint256('liq_ltv'),
+})
+
 export const vaultBorrow = table("vault_borrow", {
   vaultAddress: db.address('vault_address'),
   targetAmount: db.uint256('target_amount'),

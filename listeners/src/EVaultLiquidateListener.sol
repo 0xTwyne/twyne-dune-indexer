@@ -7,8 +7,8 @@ import {IEVault} from "./interfaces/IEVault.sol";
 import {IEulerRouter} from "./interfaces/IEulerRouter.sol";
 
 contract EVaultLiquidateListener is 
-        EVaultLiquidate$OnLiquidateEvent
-        // EVaultLiquidate$PreLiquidateEvent
+        EVaultLiquidate$OnLiquidateEvent,
+        EVaultLiquidate$PreLiquidateFunction
     {
     // Event to track external liquidation handling
     /// @custom:index external_liquidation_by_vault BTREE (vaultAddress, blockTimestamp);
@@ -32,9 +32,23 @@ contract EVaultLiquidateListener is
         uint256 liqLtv;
     }
 
-    // Struct to hold intermediate processing data to avoid stack too deep errors
-    struct ProcessingData {
+    event PreExternalLiquidation(PreExternalLiquidationData);
+    struct PreExternalLiquidationData {
         address vaultAddress;
+        uint64 blockNumber;
+        uint64 blockTimestamp;
+        bytes32 txnHash;
+        address violator;
+        address collateral;
+        uint256 collateralAmount;
+        uint256 debtAmount;
+        uint256 collateralAmountUsd;
+        uint256 debtAmountUsd;
+        uint256 liqLtv;
+    }
+
+    // Struct to hold intermediate processing data to avoid stack too deep errors
+    struct LiquidationData {
         uint256 collateralAmount;
         uint256 debtAmount;
         uint256 collateralAmountUsd;
@@ -42,6 +56,14 @@ contract EVaultLiquidateListener is
         uint256 liqLtv;
         uint256 repayAssetsUsd;
         uint256 yieldBalanceUsd;
+    }
+
+    struct PreLiquidationData {
+        uint256 collateralAmount;
+        uint256 debtAmount;
+        uint256 collateralAmountUsd;
+        uint256 debtAmountUsd;
+        uint256 liqLtv;
     }
 
     function _getCollateralAmount(address collateralVaultAddress, address userAddress) internal returns (uint256) {
@@ -80,21 +102,20 @@ contract EVaultLiquidateListener is
         EventContext memory ctx, 
         EVaultLiquidate$LiquidateEventParams memory inputs
     ) external override {
-        // Use ProcessingData struct to avoid stack too deep errors
-        ProcessingData memory data;
-        data.vaultAddress = ctx.txn.call.callee();
+        // Use LiquidationData struct to avoid stack too deep errors
+        LiquidationData memory data;
         
         // Populate processing data
         data.collateralAmount = _getCollateralAmount(inputs.collateral, inputs.violator);
-        data.debtAmount = _getDebtAmount(data.vaultAddress, inputs.violator);
+        data.debtAmount = _getDebtAmount(ctx.txn.call.callee(), inputs.violator);
         data.collateralAmountUsd = _getQuote(inputs.collateral, data.collateralAmount);
-        data.debtAmountUsd = _getQuote(data.vaultAddress, data.debtAmount);
-        data.liqLtv = _getLiqLtv(inputs.collateral, data.vaultAddress);
-        data.repayAssetsUsd = _getQuote(data.vaultAddress, inputs.repayAssets);
+        data.debtAmountUsd = _getQuote(ctx.txn.call.callee(), data.debtAmount);
+        data.liqLtv = _getLiqLtv(inputs.collateral, ctx.txn.call.callee());
+        data.repayAssetsUsd = _getQuote(ctx.txn.call.callee(), inputs.repayAssets);
         data.yieldBalanceUsd = _getQuote(inputs.collateral, inputs.yieldBalance);
 
         emit ExternalLiquidation(ExternalLiquidationData({
-            vaultAddress: data.vaultAddress,
+            vaultAddress: ctx.txn.call.callee(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
             txnHash: ctx.txn.hash(),
@@ -113,16 +134,36 @@ contract EVaultLiquidateListener is
         }));
     }
 
-    // function preLiquidateEvent(
-    //     EventContext memory ctx, 
-    //     EVaultLiquidate$PreLiquidateEventParams memory inputs
-    // ) external override {
-    //     
-    // }
+    function preLiquidateFunction(
+        PreFunctionContext memory ctx, 
+        EVaultLiquidate$LiquidateFunctionInputs memory inputs
+    ) external override {
+        PreLiquidationData memory data;
+        data.collateralAmount = _getCollateralAmount(inputs.collateral, inputs.violator);
+        data.debtAmount = _getDebtAmount(ctx.txn.call.callee(), inputs.violator);
+        data.collateralAmountUsd = _getQuote(inputs.collateral, data.collateralAmount);
+        data.debtAmountUsd = _getQuote(ctx.txn.call.callee(), data.debtAmount);
+        data.liqLtv = _getLiqLtv(inputs.collateral, ctx.txn.call.callee());
+
+        emit PreExternalLiquidation(PreExternalLiquidationData({
+            vaultAddress: ctx.txn.call.callee(),
+            blockNumber: uint64(block.number),
+            blockTimestamp: uint64(block.timestamp),
+            txnHash: ctx.txn.hash(),
+            violator: inputs.violator,
+            collateral: inputs.collateral,
+            collateralAmount: data.collateralAmount,
+            debtAmount: data.debtAmount,
+            collateralAmountUsd: data.collateralAmountUsd,
+            debtAmountUsd: data.debtAmountUsd,
+            liqLtv: data.liqLtv
+        }));
+    }
 
     function getTriggers() external view returns (Trigger[] memory) {
-        Trigger[] memory triggers = new Trigger[](1);
+        Trigger[] memory triggers = new Trigger[](2);
         triggers[0] = this.triggerOnLiquidateEvent();
+        triggers[1] = this.triggerPreLiquidateFunction();
         return triggers;
     }
 }
