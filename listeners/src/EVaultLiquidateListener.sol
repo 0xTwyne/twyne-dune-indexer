@@ -14,6 +14,7 @@ contract EVaultLiquidateListener is
     /// @custom:index external_liquidation_by_vault BTREE (vaultAddress, blockTimestamp);
     event ExternalLiquidation(ExternalLiquidationData);
     struct ExternalLiquidationData {
+        uint256 chainId;
         address vaultAddress;
         uint64 blockNumber;
         uint64 blockTimestamp;
@@ -34,6 +35,7 @@ contract EVaultLiquidateListener is
 
     event PreExternalLiquidation(PreExternalLiquidationData);
     struct PreExternalLiquidationData {
+        uint256 chainId;
         address vaultAddress;
         uint64 blockNumber;
         uint64 blockTimestamp;
@@ -115,6 +117,7 @@ contract EVaultLiquidateListener is
         data.yieldBalanceUsd = _getQuote(inputs.collateral, inputs.yieldBalance);
 
         emit ExternalLiquidation(ExternalLiquidationData({
+            chainId: uint256(block.chainid),
             vaultAddress: ctx.txn.call.callee(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
@@ -146,6 +149,7 @@ contract EVaultLiquidateListener is
         data.liqLtv = _getLiqLtv(inputs.collateral, ctx.txn.call.callee());
 
         emit PreExternalLiquidation(PreExternalLiquidationData({
+            chainId: uint256(block.chainid),
             vaultAddress: ctx.txn.call.callee(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),

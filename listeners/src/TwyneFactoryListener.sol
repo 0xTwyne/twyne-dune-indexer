@@ -19,6 +19,7 @@ contract TwyneFactoryListener is
     event VaultCreated(VaultCreatedData);
     
     struct VaultCreatedData {
+        uint256 chainId;
         address vaultAddress;
         address creator;
         address factory;
@@ -38,6 +39,7 @@ contract TwyneFactoryListener is
     /// @custom:index factory_handle_external_liquidation_by_factory BTREE (factoryAddress, blockTimestamp);
     event FactoryHandleExternalLiquidation(FactoryHandleExternalLiquidationData);
     struct FactoryHandleExternalLiquidationData {
+        uint256 chainId;
         address factoryAddress;
         uint64 blockNumber;
         uint64 blockTimestamp;
@@ -49,6 +51,7 @@ contract TwyneFactoryListener is
     /// @custom:index factory_set_collateral_liquidated_by_liquidator BTREE (liquidatorAddress, blockTimestamp);
     event FactorySetCollateralVaultLiquidated(FactorySetCollateralVaultLiquidatedData);
     struct FactorySetCollateralVaultLiquidatedData {
+        uint256 chainId;
         address factoryAddress;
         address collateralVault;
         address creditVault;
@@ -88,6 +91,7 @@ contract TwyneFactoryListener is
         address twyneVaultManager = IEulerCollateralVault(inputs.vault).twyneVaultManager();
         uint256 version = IEulerCollateralVault(inputs.vault).version();
         emit VaultCreated(VaultCreatedData({
+            chainId: uint256(block.chainid),
             vaultAddress: inputs.vault,
             creator: ctx.txn.call.caller(),
             factory: ctx.txn.call.callee(),
@@ -108,6 +112,7 @@ contract TwyneFactoryListener is
         EventContext memory ctx
     ) external override {
         emit FactoryHandleExternalLiquidation(FactoryHandleExternalLiquidationData({
+            chainId: uint256(block.chainid),
             factoryAddress: ctx.txn.call.callee(),
             blockNumber: uint64(block.number),
             blockTimestamp: uint64(block.timestamp),
@@ -152,6 +157,7 @@ contract TwyneFactoryListener is
         data.userOwnedCollateralUsd = _getQuote(data.creditVault, data.userOwnedCollateral);
 
         emit FactorySetCollateralVaultLiquidated(FactorySetCollateralVaultLiquidatedData({
+            chainId: uint256(block.chainid),
             factoryAddress: ctx.txn.call.callee(),
             collateralVault: inputs.collateralVault,
             creditVault: data.creditVault,

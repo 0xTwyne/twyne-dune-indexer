@@ -12,6 +12,7 @@ contract PerBlockListener is Raw$OnBlock {
 
     // Event to store vault data - this will create a database table
     event VaultMetrics(
+        uint256 chainId,
         address indexed vaultAddress,
         uint256 totalAssets,
         uint256 totalAssetsUsd,
@@ -87,6 +88,7 @@ contract PerBlockListener is Raw$OnBlock {
         uint256 totalBorrows = _getBorrows(vaultAddress);
         uint256 totalAssetsUsd = _getQuote(vaultAddress, totalAssets);
         emit VaultMetrics(
+            uint256(block.chainid),
             vaultAddress,
             totalAssets,
             totalAssetsUsd,

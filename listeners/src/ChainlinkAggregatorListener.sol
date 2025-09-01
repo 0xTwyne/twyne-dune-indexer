@@ -11,6 +11,7 @@ contract ChainlinkAggregatorListener is
     event AnswerUpdated(AnswerUpdatedData);
     
     struct AnswerUpdatedData {
+        uint256 chainId;
         int256 current;
         uint256 roundId;
         uint256 updatedAt;
@@ -25,6 +26,7 @@ contract ChainlinkAggregatorListener is
         ChainlinkAggregator$AnswerUpdatedEventParams memory inputs
     ) external override {
         emit AnswerUpdated(AnswerUpdatedData({
+            chainId: uint256(block.chainid),
             current: inputs.current,
             roundId: inputs.roundId,
             updatedAt: inputs.updatedAt,

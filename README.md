@@ -1,23 +1,17 @@
-# Sim IDX: Contract Decoder Template
+# Twyne Dune Indexer
 
-This repository contains the template for a Sim IDX app designed to decode and index data directly from smart contract function calls and emitted events.
+This is a Dune Indexer for the Twyne protocol. It is built using the Sim IDX framework and provides access to indexed blockchain data related to collateral vaults, liquidations, and vault metrics.
 
 ## Getting Started
 
+To build the indexer, run the following command:
 ```bash
-sim init --template=contract-decoder
+sim build
 ```
 
-This will scaffold a new Sim IDX app in your current directory, pre-configured with the example of decoding Uniswap's V3 Factory contract.
+To test a listener, use:
+```bash
+sim listeners evaluate --chain-id 1 --start-block 23248031
+```
 
-For a complete, step-by-step guide on how to customize this template to decode a different contract, please refer to our [official documentation](https://docs.sim.dune.com/idx/guides/decode-any-contract).
-
-[**View the Full Contract Decoder Guide**](https://docs.sim.dune.com/idx/guides/decode-any-contract)
-
-## Use Cases
-
-This pattern is especially powerful for:
-
--   **Price Oracles:** Capturing real-time price data from functions like Uniswap's V3 Factory contract.
--   **Marketplaces:** Decoding the results of complex order fulfillments, like `fulfillAdvancedOrder` on OpenSea's Seaport protocol.
--   **DeFi Protocols:** Extracting detailed user state (e.g., health factor, collateral) from functions that return complex objects.
+To run the API locally, follow the steps in the [local development setup guide](https://docs.sim.dune.com/idx/apis#local-development-setup).

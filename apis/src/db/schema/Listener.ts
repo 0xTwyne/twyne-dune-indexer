@@ -4,6 +4,7 @@ import * as t from "drizzle-orm/pg-core";
 import { db, types } from "@duneanalytics/sim-idx";
 
 export const answerUpdated = table("answer_updated", {
+  chainId: db.uint256('chain_id'),
   current: db.int256('current'),
   roundId: db.uint256('round_id'),
   updatedAt: db.uint256('updated_at'),
@@ -14,6 +15,7 @@ export const answerUpdated = table("answer_updated", {
 })
 
 export const externalLiquidation = table("external_liquidation", {
+  chainId: db.uint256('chain_id'),
   vaultAddress: db.address('vault_address'),
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
@@ -33,6 +35,7 @@ export const externalLiquidation = table("external_liquidation", {
 })
 
 export const factoryHandleExternalLiquidation = table("factory_handle_external_liquidation", {
+  chainId: db.uint256('chain_id'),
   factoryAddress: db.address('factory_address'),
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
@@ -40,6 +43,7 @@ export const factoryHandleExternalLiquidation = table("factory_handle_external_l
 })
 
 export const factorySetCollateralVaultLiquidated = table("factory_set_collateral_vault_liquidated", {
+  chainId: db.uint256('chain_id'),
   factoryAddress: db.address('factory_address'),
   collateralVault: db.address('collateral_vault'),
   creditVault: db.address('credit_vault'),
@@ -60,6 +64,7 @@ export const factorySetCollateralVaultLiquidated = table("factory_set_collateral
 })
 
 export const positionSnapshot = table("position_snapshot", {
+  chainId: db.uint256('chain_id'),
   vaultAddress: db.address('vault_address'),
   creditVault: db.address('credit_vault'),
   debtVault: db.address('debt_vault'),
@@ -80,6 +85,7 @@ export const positionSnapshot = table("position_snapshot", {
 })
 
 export const preExternalLiquidation = table("pre_external_liquidation", {
+  chainId: db.uint256('chain_id'),
   vaultAddress: db.address('vault_address'),
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
@@ -94,6 +100,7 @@ export const preExternalLiquidation = table("pre_external_liquidation", {
 })
 
 export const vaultBorrow = table("vault_borrow", {
+  chainId: db.uint256('chain_id'),
   vaultAddress: db.address('vault_address'),
   targetAmount: db.uint256('target_amount'),
   receiver: db.address('receiver'),
@@ -105,6 +112,7 @@ export const vaultBorrow = table("vault_borrow", {
 })
 
 export const vaultCreated = table("vault_created", {
+  chainId: db.uint256('chain_id'),
   vaultAddress: db.address('vault_address'),
   creator: db.address('creator'),
   factory: db.address('factory'),
@@ -121,6 +129,7 @@ export const vaultCreated = table("vault_created", {
 })
 
 export const vaultDeposit = table("vault_deposit", {
+  chainId: db.uint256('chain_id'),
   vaultAddress: db.address('vault_address'),
   amount: db.uint256('amount'),
   userAddress: db.address('user_address'),
@@ -131,6 +140,7 @@ export const vaultDeposit = table("vault_deposit", {
 })
 
 export const vaultDepositUnderlying = table("vault_deposit_underlying", {
+  chainId: db.uint256('chain_id'),
   vaultAddress: db.address('vault_address'),
   amount: db.uint256('amount'),
   userAddress: db.address('user_address'),
@@ -141,6 +151,7 @@ export const vaultDepositUnderlying = table("vault_deposit_underlying", {
 })
 
 export const vaultMetrics = table("vault_metrics", {
+  chainId: db.uint256('chain_id'),
   vaultAddress: db.address('vault_address'),
   totalAssets: db.uint256('total_assets'),
   totalAssetsUsd: db.uint256('total_assets_usd'),
@@ -150,6 +161,7 @@ export const vaultMetrics = table("vault_metrics", {
 })
 
 export const vaultRepay = table("vault_repay", {
+  chainId: db.uint256('chain_id'),
   vaultAddress: db.address('vault_address'),
   repayAmount: db.uint256('repay_amount'),
   userAddress: db.address('user_address'),
@@ -160,6 +172,7 @@ export const vaultRepay = table("vault_repay", {
 })
 
 export const vaultTeleport = table("vault_teleport", {
+  chainId: db.uint256('chain_id'),
   vaultAddress: db.address('vault_address'),
   toDeposit: db.uint256('to_deposit'),
   toBorrow: db.uint256('to_borrow'),
@@ -171,6 +184,7 @@ export const vaultTeleport = table("vault_teleport", {
 })
 
 export const vaultWithdraw = table("vault_withdraw", {
+  chainId: db.uint256('chain_id'),
   vaultAddress: db.address('vault_address'),
   amount: db.uint256('amount'),
   receiver: db.address('receiver'),

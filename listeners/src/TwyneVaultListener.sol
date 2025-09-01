@@ -30,6 +30,7 @@ contract TwyneVaultListener is
     /// @custom:index vault_deposit_by_user BTREE (userAddress, blockTimestamp);
     event VaultDeposit(VaultDepositData);
     struct VaultDepositData {
+        uint256 chainId;
         address vaultAddress;
         uint256 amount;
         address userAddress;
@@ -44,6 +45,7 @@ contract TwyneVaultListener is
     /// @custom:index vault_deposit_underlying_by_user BTREE (userAddress, blockTimestamp);
     event VaultDepositUnderlying(VaultDepositUnderlyingData);
     struct VaultDepositUnderlyingData {
+        uint256 chainId;
         address vaultAddress;
         uint256 amount;
         address userAddress;
@@ -58,6 +60,7 @@ contract TwyneVaultListener is
     /// @custom:index vault_withdraw_by_user BTREE (userAddress, blockTimestamp);
     event VaultWithdraw(VaultWithdrawData);
     struct VaultWithdrawData {
+        uint256 chainId;
         address vaultAddress;
         uint256 amount;
         address receiver;
@@ -73,6 +76,7 @@ contract TwyneVaultListener is
     /// @custom:index vault_borrow_by_user BTREE (borrowerAddress, blockTimestamp);
     event VaultBorrow(VaultBorrowData);
     struct VaultBorrowData {
+        uint256 chainId;
         address vaultAddress;
         uint256 targetAmount;
         address receiver;
@@ -88,6 +92,7 @@ contract TwyneVaultListener is
     /// @custom:index vault_repay_by_user BTREE (userAddress, blockTimestamp);
     event VaultRepay(VaultRepayData);
     struct VaultRepayData {
+        uint256 chainId;
         address vaultAddress;
         uint256 repayAmount;
         address userAddress;
@@ -102,6 +107,7 @@ contract TwyneVaultListener is
     /// @custom:index vault_teleport_by_user BTREE (userAddress, blockTimestamp);
     event VaultTeleport(VaultTeleportData);
     struct VaultTeleportData {
+        uint256 chainId;
         address vaultAddress;
         uint256 toDeposit;
         uint256 toBorrow;
@@ -115,6 +121,7 @@ contract TwyneVaultListener is
     /// @custom:index position_snapshot_by_vault BTREE (vaultAddress, blockTimestamp);
     event PositionSnapshot(PositionSnapshotData);
     struct PositionSnapshotData {
+        uint256 chainId;
         address vaultAddress;
         address creditVault;
         address debtVault;
@@ -161,6 +168,7 @@ contract TwyneVaultListener is
         data.userOwnedCollateralUsd = _getQuote(data.creditVault, data.userOwnedCollateral);
 
         return PositionSnapshotData({
+            chainId: uint256(block.chainid),
             vaultAddress: vaultAddress,
             creditVault: data.creditVault,
             debtVault: data.debtVault,
@@ -195,6 +203,7 @@ contract TwyneVaultListener is
         }
 
         emit VaultDeposit(VaultDepositData({
+            chainId: uint256(block.chainid),
             vaultAddress: vaultAddress,
             amount: inputs.amount,
             userAddress: ctx.txn.call.caller(),
@@ -219,6 +228,7 @@ contract TwyneVaultListener is
         }
 
         emit VaultDepositUnderlying(VaultDepositUnderlyingData({
+            chainId: uint256(block.chainid),
             vaultAddress: vaultAddress,
             amount: inputs.amount,
             userAddress: ctx.txn.call.caller(),
@@ -243,6 +253,7 @@ contract TwyneVaultListener is
         }
 
         emit VaultWithdraw(VaultWithdrawData({
+            chainId: uint256(block.chainid),
             vaultAddress: vaultAddress,
             amount: inputs.amount,
             receiver: inputs.receiver,
@@ -268,6 +279,7 @@ contract TwyneVaultListener is
         }
 
         emit VaultBorrow(VaultBorrowData({
+            chainId: uint256(block.chainid),
             vaultAddress: vaultAddress,
             targetAmount: inputs.targetAmount,
             receiver: inputs.receiver,
@@ -293,6 +305,7 @@ contract TwyneVaultListener is
         }
 
         emit VaultRepay(VaultRepayData({
+            chainId: uint256(block.chainid),
             vaultAddress: vaultAddress,
             repayAmount: inputs.repayAmount,
             userAddress: ctx.txn.call.caller(),
@@ -317,6 +330,7 @@ contract TwyneVaultListener is
         }
 
         emit VaultTeleport(VaultTeleportData({
+            chainId: uint256(block.chainid),
             vaultAddress: vaultAddress,
             toDeposit: inputs.toDeposit,
             toBorrow: inputs.toBorrow,
