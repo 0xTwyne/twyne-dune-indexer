@@ -9,43 +9,6 @@ import "./interfaces/IVaultManager.sol";
 import "./interfaces/IEulerRouter.sol";
 
 contract PerBlockListener is Raw$OnBlock {
-    
-    // Define the vault addresses as constants
-    // address genericFactory = 0xd5e966dB359f1cB2A01280fCCBEB839Ac572CE35;
-    // address vaultManager = 0x5357426530F997E03Fcf8F68bdB4a7ac6ABa5d9f;
-    // 
-    // function getAllVaults() external view returns (address[] memory) {
-    //     uint256 length = IGenericFactory(genericFactory).getProxyListLength();
-    //     address[] memory vaults = new address[](length);
-    //     // mapping (address => bool) vaults;
-    // 
-    //     for (uint256 i = 0; i < length; i++) {
-    //         vaultAddress = IGenericFactory(genericFactory).proxyList(i);
-    //         // vaults[vaultAddress]=true;
-    //         vaults[i] = vaultAddress;
-    //         vault = IEVault(vaultAddress);
-    //         underlyingVaultAddress = vault.asset();
-    //         // vaults[underlyingVaultAddress]=true;
-    //         vaults[i] = underlyingVaultAddress;
-    //         targetVaultsLength = IVaultManager(vaultManager).targetVaultLength(underlyingVaultAddress);
-    //         for (uint256 j = 0; j < targetVaultsLength; j++) {
-    //             targetVault = IVaultManager(vaultManager).allowedTargetVaultList(underlyingVaultAddress, j);
-    //             // vaults[targetVault]=true;
-    //             vaults[i] = targetVault;
-    //         }
-    //     }
-    //     address[] memory vaultsArray = new address[](vaults.length);
-    //     for (uint256 i = 0; i < length; i++) {
-    //         vaultsArray[i] = vaults[i];
-    //     }
-    //     return vaultsArray;
-    // }
-
-    // Define underlying vaults
-    // Define target vaults
-    // Take a set of all vaults
-    // store the addresses and iterate through them
-
 
     // Event to store vault data - this will create a database table
     event VaultMetrics(
@@ -58,21 +21,39 @@ contract PerBlockListener is Raw$OnBlock {
     );
 
     function onBlock(RawBlockContext memory ctx) external override {
-        // address[] memory vaults = getAllVaults();
-        if (ctx.blockNumber % 100 == 0) {
-            address[] memory vaults = new address[](5);
-            address eeUsdc = 0x9B58505aAa6e15D6A3cB15f533634332a60F29D1;
-            address eeWeth = 0xB49414341e06986FE83f17c971cCA14bD4362aF0;
-            address eUsdc = 0x0A1a3b5f2041F33522C4efc754a7D096f880eE16;
-            address eWeth = 0x859160DB5841E5cfB8D3f144C6b3381A85A4b410;
-            address eUsds = 0x556d518FDFDCC4027A3A1388699c5E11AC201D8b;
-            vaults[0] = eeUsdc;
-            vaults[1] = eeWeth;
-            vaults[2] = eUsdc;
-            vaults[3] = eWeth;
-            vaults[4] = eUsds;
-            for (uint256 i = 0; i < vaults.length; i++) {
-                _captureVaultData(vaults[i], ctx.blockNumber);
+        if (block.chainid == 1) { // Ethereum mainnet
+            if (ctx.blockNumber % 10 == 0) {
+                address[] memory vaults = new address[](5);
+                address eeWeth = 0x87b8081A3ace680f35125F469526Ac10f5418Ca7;
+                address eUsdc = 0x797DD80692c3b2dAdabCe8e30C07fDE5307D48a9;
+                address eWeth = 0xD8b27CF359b7D15710a5BE299AF6e7Bf904984C2;
+                address eUsdt = 0x313603FA690301b0CaeEf8069c065862f9162162;
+                address eWbtc = 0x998D761eC1BAdaCeb064624cc3A1d37A46C88bA4;
+                vaults[0] = eeWeth;
+                vaults[1] = eUsdc;
+                vaults[2] = eWeth;
+                vaults[3] = eUsdt;
+                vaults[4] = eWbtc;
+                for (uint256 i = 0; i < vaults.length; i++) {
+                    _captureVaultData(vaults[i], ctx.blockNumber);
+                }
+            }
+        } else if (block.chainid == 8453) { // Base mainnet
+            if (ctx.blockNumber % 100 == 0) {
+                address[] memory vaults = new address[](5);
+                address eeUsdc = 0x9B58505aAa6e15D6A3cB15f533634332a60F29D1;
+                address eeWeth = 0xB49414341e06986FE83f17c971cCA14bD4362aF0;
+                address eUsdc = 0x0A1a3b5f2041F33522C4efc754a7D096f880eE16;
+                address eWeth = 0x859160DB5841E5cfB8D3f144C6b3381A85A4b410;
+                address eUsds = 0x556d518FDFDCC4027A3A1388699c5E11AC201D8b;
+                vaults[0] = eeUsdc;
+                vaults[1] = eeWeth;
+                vaults[2] = eUsdc;
+                vaults[3] = eWeth;
+                vaults[4] = eUsds;
+                for (uint256 i = 0; i < vaults.length; i++) {
+                    _captureVaultData(vaults[i], ctx.blockNumber);
+                }
             }
         }
     }
