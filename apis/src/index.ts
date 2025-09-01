@@ -1,4 +1,4 @@
-import { eq, desc, sql, count, and, gte, lte } from "drizzle-orm";
+import { eq, desc, sql, count, and, gte, lte, inArray } from "drizzle-orm";
 import { 
   vaultCreated, 
   vaultMetrics,
@@ -12,6 +12,9 @@ import { types, db, App, middlewares } from "@duneanalytics/sim-idx";
 
 const Address = types.Address;
 const Uint = types.Uint;
+const supportedChains: types.Uint[] = [
+  1, 8453, 
+].map((id) => new types.Uint(BigInt(id)));
 
 const app = App.create();
 app.use("*", middlewares.authentication);
@@ -22,10 +25,21 @@ app.get("/api/collateralVaults", async (c) => {
     const client = db.client(c);
     const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
     const offset = parseInt(c.req.query("offset") || "0");
+
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
     
     const result = await client
       .select()
       .from(vaultCreated)
+      .where(inArray(vaultCreated.chainId, chainIds))
       .orderBy(desc(vaultCreated.blockTimestamp))
       .limit(limit)
       .offset(offset);
@@ -58,6 +72,18 @@ app.get("/api/collateralVaults/latest-snapshots", async (c) => {
     const offsetParam = c.req.query("offset") || "0";
     const canLiquidateFilter = c.req.query("canLiquidate");
     const isExternallyLiquidatedFilter = c.req.query("isExternallyLiquidated");
+    
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
+
+    console.log("chainIds", chainIds);
     
     // Validate limit parameter
     const parsedLimit = parseInt(limitParam);
@@ -104,7 +130,10 @@ app.get("/api/collateralVaults/latest-snapshots", async (c) => {
       .select()
       .from(positionSnapshot)
       .where(
-        sql`(vault_address, block_timestamp) IN (${baseSubquery})`
+        and(
+          sql`(vault_address, block_timestamp) IN (${baseSubquery})`,
+          inArray(positionSnapshot.chainId, chainIds)
+        )
       )
       .orderBy(desc(positionSnapshot.blockTimestamp))
       .limit(limit)
@@ -311,6 +340,16 @@ app.get("/api/collateralVaults/external-liquidations", async (c) => {
     const limitParam = c.req.query("limit") || "50";
     const offsetParam = c.req.query("offset") || "0";
     
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
+    
     // Validate limit parameter
     const parsedLimit = parseInt(limitParam);
     if (isNaN(parsedLimit) || parsedLimit < 1) {
@@ -352,6 +391,7 @@ app.get("/api/collateralVaults/external-liquidations", async (c) => {
         preDebtAmountUsd: preExternalLiquidation.debtAmountUsd,
       })
       .from(externalLiquidation)
+      .where(inArray(externalLiquidation.chainId, chainIds))
       .innerJoin(vaultCreated, eq(externalLiquidation.violator, vaultCreated.vaultAddress))
       .innerJoin(preExternalLiquidation, eq(externalLiquidation.txnHash, preExternalLiquidation.txnHash))
       .orderBy(desc(externalLiquidation.blockTimestamp))
@@ -362,8 +402,9 @@ app.get("/api/collateralVaults/external-liquidations", async (c) => {
     const totalCountResult = await client
       .select({ count: count() })
       .from(externalLiquidation)
+      .where(inArray(externalLiquidation.chainId, chainIds))
       .innerJoin(vaultCreated, eq(externalLiquidation.violator, vaultCreated.vaultAddress))
-      .innerJoin(preExternalLiquidation, eq(externalLiquidation.txnHash, preExternalLiquidation.txnHash));
+      .innerJoin(preExternalLiquidation, eq(externalLiquidation.txnHash, preExternalLiquidation.txnHash))
 
     const totalCount = totalCountResult[0].count;
 
@@ -395,6 +436,16 @@ app.get("/api/collateralVaults/internal-liquidations", async (c) => {
     const limitParam = c.req.query("limit") || "50";
     const offsetParam = c.req.query("offset") || "0";
     
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
+    
     // Validate limit parameter
     const parsedLimit = parseInt(limitParam);
     if (isNaN(parsedLimit) || parsedLimit < 1) {
@@ -417,6 +468,9 @@ app.get("/api/collateralVaults/internal-liquidations", async (c) => {
 
     // Build query conditions
     const conditions = [];
+    
+    // Add chainId filter
+    conditions.push(inArray(factorySetCollateralVaultLiquidated.chainId, chainIds));
 
     if (startBlock) {
       try {
@@ -453,6 +507,7 @@ app.get("/api/collateralVaults/internal-liquidations", async (c) => {
     let baseQuery = sql`
       WITH ranked_snapshots AS (
         SELECT 
+          f.chain_id,
           f.factory_address,
           f.collateral_vault,
           f.credit_vault,
@@ -485,6 +540,7 @@ app.get("/api/collateralVaults/internal-liquidations", async (c) => {
           AND f.block_number = p.block_number
       )
       SELECT 
+        chain_id,
         factory_address,
         collateral_vault,
         credit_vault,
@@ -516,7 +572,9 @@ app.get("/api/collateralVaults/internal-liquidations", async (c) => {
     if (conditions.length > 0) {
       const whereConditions = [];
       for (const condition of conditions) {
-        if (condition.toString().includes('block_number')) {
+        if (condition.toString().includes('chain_id')) {
+          whereConditions.push(condition.toString().replace('factory_set_collateral_vault_liquidated.chain_id', 'f.chain_id'));
+        } else if (condition.toString().includes('block_number')) {
           whereConditions.push(condition.toString().replace('factory_set_collateral_vault_liquidated.block_number', 'block_number'));
         } else if (condition.toString().includes('block_timestamp')) {
           whereConditions.push(condition.toString().replace('factory_set_collateral_vault_liquidated.block_timestamp', 'block_timestamp'));
@@ -526,6 +584,7 @@ app.get("/api/collateralVaults/internal-liquidations", async (c) => {
         baseQuery = sql`
           WITH ranked_snapshots AS (
             SELECT 
+              f.chain_id,
               f.factory_address,
               f.collateral_vault,
               f.credit_vault,
@@ -559,6 +618,7 @@ app.get("/api/collateralVaults/internal-liquidations", async (c) => {
             WHERE ${sql.raw(whereConditions.join(' AND '))}
           )
           SELECT 
+            chain_id,
             factory_address,
             collateral_vault,
             credit_vault,
@@ -604,7 +664,9 @@ app.get("/api/collateralVaults/internal-liquidations", async (c) => {
     if (conditions.length > 0) {
       const whereConditions = [];
       for (const condition of conditions) {
-        if (condition.toString().includes('block_number')) {
+        if (condition.toString().includes('chain_id')) {
+          whereConditions.push(condition.toString().replace('factory_set_collateral_vault_liquidated.chain_id', 'f.chain_id'));
+        } else if (condition.toString().includes('block_number')) {
           whereConditions.push(condition.toString().replace('factory_set_collateral_vault_liquidated.block_number', 'f.block_number'));
         } else if (condition.toString().includes('block_timestamp')) {
           whereConditions.push(condition.toString().replace('factory_set_collateral_vault_liquidated.block_timestamp', 'f.block_timestamp'));
@@ -732,17 +794,30 @@ app.get("/api/evault/:address/metrics", async (c) => {
 app.get("/api/evaults/latest", async (c) => {
   try {
     const client = db.client(c);
+    
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
 
     // Get the latest metrics for each vault
     const latestMetrics = await client
       .select()
       .from(vaultMetrics)
       .where(
+        and(
         sql`(vault_address, block_number) IN (
           SELECT vault_address, MAX(block_number)
           FROM ${vaultMetrics}
           GROUP BY vault_address
-        )`
+        )`,
+        inArray(vaultMetrics.chainId, chainIds)
+        )
       )
       .orderBy(desc(vaultMetrics.blockTimestamp));
 
@@ -761,10 +836,21 @@ app.get("/api/evaults/latest", async (c) => {
 app.get("/api/chainlink/latest-answers", async (c) => {
   try {
     const client = db.client(c);
+    
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
 
     const latestAnswers = await client
       .select()
       .from(answerUpdated)
+      .where(inArray(answerUpdated.chainId, chainIds))
       .orderBy(desc(answerUpdated.blockTimestamp))
       .limit(5);
 
@@ -785,15 +871,32 @@ app.get("/api/health", async (c) => {
   try {
     const client = db.client(c);
     
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
+    
     // Test database connection
-    const testQuery = await client.select({ count: count() }).from(vaultCreated);
-    const metricsQuery = await client.select({ count: count() }).from(vaultMetrics);
+    const testQuery = await client
+      .select({ count: count() })
+      .from(vaultCreated)
+      .where(inArray(vaultCreated.chainId, chainIds));
+    const metricsQuery = await client
+      .select({ count: count() })
+      .from(vaultMetrics)
+      .where(inArray(vaultMetrics.chainId, chainIds));
     
     return Response.json({ 
       status: "healthy", 
       timestamp: new Date().toISOString(),
       totalVaults: testQuery[0].count,
       totalMetricsRecords: metricsQuery[0].count,
+      chainIds: chainIds.map(id => id.toString()),
     });
   } catch (e) {
     console.error("Health check failed:", e);
