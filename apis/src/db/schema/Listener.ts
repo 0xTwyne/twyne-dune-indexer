@@ -156,6 +156,12 @@ export const vaultMetrics = table("vault_metrics", {
   totalAssets: db.uint256('total_assets'),
   totalAssetsUsd: db.uint256('total_assets_usd'),
   totalBorrows: db.uint256('total_borrows'),
+  totalBorrowsUsd: db.uint256('total_borrows_usd'),
+  asset: db.address('asset'),
+  interestRate: db.uint256('interest_rate'),
+  symbol: t.text('symbol'),
+  name: t.text('name'),
+  decimals: db.uint256('decimals'),
   blockNumber: db.uint256('block_number'),
   blockTimestamp: db.uint256('block_timestamp'),
 })

@@ -17,9 +17,28 @@ contract PerBlockListener is Raw$OnBlock {
         uint256 totalAssets,
         uint256 totalAssetsUsd,
         uint256 totalBorrows,
+        uint256 totalBorrowsUsd,
+        address asset,
+        uint256 interestRate,
+        string symbol,
+        string name,
+        uint256 decimals,
         uint256 blockNumber,
         uint256 blockTimestamp
     );
+
+    // Struct to hold vault metrics data to avoid stack too deep errors
+    struct VaultMetricsData {
+        uint256 totalAssets;
+        uint256 totalBorrows;
+        uint256 totalAssetsUsd;
+        uint256 totalBorrowsUsd;
+        address asset;
+        uint256 interestRate;
+        string symbol;
+        string name;
+        uint256 decimals;
+    }
 
     function onBlock(RawBlockContext memory ctx) external override {
         if (block.chainid == 1) { // Ethereum mainnet
@@ -84,15 +103,32 @@ contract PerBlockListener is Raw$OnBlock {
     }
 
     function _captureVaultData(address vaultAddress, uint256 blockNumber) internal {
-        uint256 totalAssets = _getTotalAssets(vaultAddress);
-        uint256 totalBorrows = _getBorrows(vaultAddress);
-        uint256 totalAssetsUsd = _getQuote(vaultAddress, totalAssets);
+        // Use VaultMetricsData struct to avoid stack too deep errors
+        VaultMetricsData memory data;
+        
+        // Populate vault metrics data
+        data.totalAssets = _getTotalAssets(vaultAddress);
+        data.totalBorrows = _getBorrows(vaultAddress);
+        data.totalAssetsUsd = _getQuote(vaultAddress, data.totalAssets);
+        data.totalBorrowsUsd = _getQuote(vaultAddress, data.totalBorrows);
+        data.decimals = IEVault(vaultAddress).decimals();
+        data.asset = IEVault(vaultAddress).asset();
+        data.interestRate = IEVault(vaultAddress).interestRate();
+        data.symbol = IEVault(vaultAddress).symbol();
+        data.name = IEVault(vaultAddress).name();
+        
         emit VaultMetrics(
             uint256(block.chainid),
             vaultAddress,
-            totalAssets,
-            totalAssetsUsd,
-            totalBorrows,
+            data.totalAssets,
+            data.totalAssetsUsd,
+            data.totalBorrows,
+            data.totalBorrowsUsd,
+            data.asset,
+            data.interestRate,
+            data.symbol,
+            data.name,
+            data.decimals,
             blockNumber,
             block.timestamp
         );

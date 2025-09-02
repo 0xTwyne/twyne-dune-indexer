@@ -56,4 +56,22 @@ interface IEVault {
         returns (
             uint256
         );
+    function decimals()
+        external
+        view
+        returns (
+            uint256
+        );
+    function interestRate()
+        external
+        view
+        returns (uint256);
+    function symbol()
+        external
+        view
+        returns (string memory);
+    function name()
+        external
+        view
+        returns (string memory);
 }
