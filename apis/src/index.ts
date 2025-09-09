@@ -866,6 +866,86 @@ app.get("/api/chainlink/latest-answers", async (c) => {
   }
 });
 
+// Get protocol statistics (total collateral and debt from latest snapshots)
+app.get("/api/protocolStats", async (c) => {
+  try {
+    const client = db.client(c);
+    
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
+
+    // Build the base subquery for latest snapshots (same logic as latest-snapshots endpoint)
+    const baseSubquery = sql`
+      SELECT vault_address, MAX(block_timestamp) as max_timestamp
+      FROM ${positionSnapshot}
+      GROUP BY vault_address
+    `;
+    
+    // Get the latest position snapshot for each vault address and calculate aggregated stats
+    const statsResult = await client
+      .select({
+        totalCollateralUsd: sql<string>`COALESCE(SUM(${positionSnapshot.userOwnedCollateralUsd}), 0)`,
+        totalDebtUsd: sql<string>`COALESCE(SUM(${positionSnapshot.maxRepayUsd}), 0)`,
+        uniqueVaults: sql<string>`COUNT(DISTINCT ${positionSnapshot.vaultAddress})`
+      })
+      .from(positionSnapshot)
+      .where(
+        and(
+          sql`(vault_address, block_timestamp) IN (${baseSubquery})`,
+          inArray(positionSnapshot.chainId, chainIds)
+        )
+      );
+
+    // Get the latest EVault metrics for vaults with symbols starting with "ee" (case sensitive)
+    const evaultSubquery = sql`
+      SELECT vault_address, MAX(block_number) as max_block_number
+      FROM ${vaultMetrics}
+      GROUP BY vault_address
+    `;
+
+    const evaultStatsResult = await client
+      .select({
+        totalEvaultAssetsUsd: sql<string>`COALESCE(SUM(${vaultMetrics.totalAssetsUsd}), 0)`,
+        totalEvaultBorrowsUsd: sql<string>`COALESCE(SUM(${vaultMetrics.totalBorrowsUsd}), 0)`
+      })
+      .from(vaultMetrics)
+      .where(
+        and(
+          sql`(vault_address, block_number) IN (${evaultSubquery})`,
+          inArray(vaultMetrics.chainId, chainIds),
+          sql`${vaultMetrics.symbol} LIKE 'ee%'`
+        )
+      );
+
+    // Extract the results from the first rows
+    const collateralStats = statsResult[0];
+    const evaultStats = evaultStatsResult[0];
+
+    return Response.json({
+      totalCollateralUsd: collateralStats.totalCollateralUsd,
+      totalDebtUsd: collateralStats.totalDebtUsd,
+      totalEvaultAssetsUsd: evaultStats.totalEvaultAssetsUsd,
+      totalEvaultBorrowsUsd: evaultStats.totalEvaultBorrowsUsd,
+      uniqueVaults: collateralStats.uniqueVaults,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("Protocol stats query failed:", e);
+    console.error("Cause:", (e as Error).cause);
+    return Response.json({ 
+      error: "Failed to fetch protocol statistics",
+      details: (e as Error).message 
+    }, { status: 500 });
+  }
+});
+
 // Health check endpoint
 app.get("/api/health", async (c) => {
   try {
