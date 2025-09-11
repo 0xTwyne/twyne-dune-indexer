@@ -928,12 +928,15 @@ app.get("/api/protocolStats", async (c) => {
     const collateralStats = statsResult[0];
     const evaultStats = evaultStatsResult[0];
 
+    // Convert string values to numbers and scale by 1e18 (except uniqueVaults)
+    const scaleFactor = 1e18;
+    
     return Response.json({
-      totalCollateralUsd: collateralStats.totalCollateralUsd,
-      totalDebtUsd: collateralStats.totalDebtUsd,
-      totalEvaultAssetsUsd: evaultStats.totalEvaultAssetsUsd,
-      totalEvaultBorrowsUsd: evaultStats.totalEvaultBorrowsUsd,
-      uniqueVaults: collateralStats.uniqueVaults,
+      totalCollateralUsd: Number(collateralStats.totalCollateralUsd) / scaleFactor,
+      totalDebtUsd: Number(collateralStats.totalDebtUsd) / scaleFactor,
+      totalEvaultAssetsUsd: Number(evaultStats.totalEvaultAssetsUsd) / scaleFactor,
+      totalEvaultBorrowsUsd: Number(evaultStats.totalEvaultBorrowsUsd) / scaleFactor,
+      uniqueVaults: Number(collateralStats.uniqueVaults), // No scaling for uniqueVaults
       timestamp: new Date().toISOString()
     });
   } catch (e) {
