@@ -35,26 +35,56 @@ app.get("/api/collateralVaults", async (c) => {
         .split(",")
         .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
     }
+
+    // Parse blockNumber parameter
+    const blockNumberParam = c.req.query("endBlock");
+    let blockNumberFilter: types.Uint | null = null;
+    if (blockNumberParam) {
+      const blockNumberValue = parseInt(blockNumberParam, 10);
+      if (isNaN(blockNumberValue) || blockNumberValue < 0) {
+        return Response.json({ error: "Invalid blockNumber parameter" }, { status: 400 });
+      }
+      blockNumberFilter = new types.Uint(BigInt(blockNumberValue));
+    }
+
+    // Build where conditions
+    const whereConditions = [inArray(vaultCreated.chainId, chainIds)];
+    if (blockNumberFilter) {
+      whereConditions.push(lte(vaultCreated.blockNumber, blockNumberFilter));
+    }
     
     const result = await client
       .select()
       .from(vaultCreated)
-      .where(inArray(vaultCreated.chainId, chainIds))
+      .where(and(...whereConditions))
       .orderBy(desc(vaultCreated.blockTimestamp))
       .limit(limit)
       .offset(offset);
     console.log(result);
 
-    const totalCount = await client
+    // Update totalCount query to respect blockNumber filter
+    const totalCountQuery = client
       .select({ count: count() })
       .from(vaultCreated);
+    
+    if (blockNumberFilter) {
+      totalCountQuery.where(and(
+        inArray(vaultCreated.chainId, chainIds),
+        lte(vaultCreated.blockNumber, blockNumberFilter)
+      ));
+    } else {
+      totalCountQuery.where(inArray(vaultCreated.chainId, chainIds));
+    }
+
+    const totalCount = await totalCountQuery;
 
     return Response.json({
       vaults: result,
       count: result.length,
       totalCount: totalCount[0].count,
       limit,
-      offset
+      offset,
+      ...(blockNumberFilter && { blockNumber: blockNumberFilter.toString() })
     });
   } catch (e) {
     console.error("Database operation failed:", e);
