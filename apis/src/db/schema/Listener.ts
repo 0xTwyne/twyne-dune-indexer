@@ -63,6 +63,103 @@ export const factorySetCollateralVaultLiquidated = table("factory_set_collateral
   userOwnedCollateralUsd: db.uint256('user_owned_collateral_usd'),
 })
 
+export const govSetCaps = table("gov_set_caps", {
+  chainId: db.uint256('chain_id'),
+  vaultAddress: db.address('vault_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  newSupplyCap: db.uint16('new_supply_cap'),
+  newBorrowCap: db.uint16('new_borrow_cap'),
+})
+
+export const govSetConfigFlags = table("gov_set_config_flags", {
+  chainId: db.uint256('chain_id'),
+  vaultAddress: db.address('vault_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  newConfigFlags: db.uint32('new_config_flags'),
+})
+
+export const govSetFeeReceiver = table("gov_set_fee_receiver", {
+  chainId: db.uint256('chain_id'),
+  vaultAddress: db.address('vault_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  newFeeReceiver: db.address('new_fee_receiver'),
+})
+
+export const govSetGovernorAdmin = table("gov_set_governor_admin", {
+  chainId: db.uint256('chain_id'),
+  vaultAddress: db.address('vault_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  newGovernorAdmin: db.address('new_governor_admin'),
+})
+
+export const govSetHookConfig = table("gov_set_hook_config", {
+  chainId: db.uint256('chain_id'),
+  vaultAddress: db.address('vault_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  newHookTarget: db.address('new_hook_target'),
+  newHookedOps: db.uint32('new_hooked_ops'),
+})
+
+export const govSetInterestFee = table("gov_set_interest_fee", {
+  chainId: db.uint256('chain_id'),
+  vaultAddress: db.address('vault_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  newFee: db.uint16('new_fee'),
+})
+
+export const govSetInterestRateModel = table("gov_set_interest_rate_model", {
+  chainId: db.uint256('chain_id'),
+  vaultAddress: db.address('vault_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  newInterestRateModel: db.address('new_interest_rate_model'),
+})
+
+export const govSetLiquidationCoolOffTime = table("gov_set_liquidation_cool_off_time", {
+  chainId: db.uint256('chain_id'),
+  vaultAddress: db.address('vault_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  newCoolOffTime: db.uint16('new_cool_off_time'),
+})
+
+export const govSetLtv = table("gov_set_ltv", {
+  chainId: db.uint256('chain_id'),
+  vaultAddress: db.address('vault_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  collateral: db.address('collateral'),
+  borrowLtv: db.uint16('borrow_ltv'),
+  liquidationLtv: db.uint16('liquidation_ltv'),
+  initialLiquidationLtv: db.uint16('initial_liquidation_ltv'),
+  targetTimestamp: db.uint48('target_timestamp'),
+  rampDuration: db.uint32('ramp_duration'),
+})
+
+export const govSetMaxLiquidationDiscount = table("gov_set_max_liquidation_discount", {
+  chainId: db.uint256('chain_id'),
+  vaultAddress: db.address('vault_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  newDiscount: db.uint16('new_discount'),
+})
+
 export const positionSnapshot = table("position_snapshot", {
   chainId: db.uint256('chain_id'),
   vaultAddress: db.address('vault_address'),
