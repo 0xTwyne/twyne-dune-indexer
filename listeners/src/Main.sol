@@ -8,6 +8,7 @@ import "./TwyneVaultListener.sol";
 import "./PerBlockListener.sol";
 import "./ChainlinkAggregatorListener.sol";
 import "./EVaultLiquidateListener.sol";
+import "./EVaultParamUpdateListener.sol";
 
 contract Triggers is BaseTriggers {
     function triggers() external virtual override {
@@ -16,6 +17,7 @@ contract Triggers is BaseTriggers {
         PerBlockListener perBlockListener = new PerBlockListener();
         ChainlinkAggregatorListener chainlinkAggregatorListener = new ChainlinkAggregatorListener();
         EVaultLiquidateListener evaultLiquidateListener = new EVaultLiquidateListener();
+        EVaultParamUpdateListener evaultParamUpdateListener = new EVaultParamUpdateListener();
 
         // Ethereum
         address collateralVaultFactoryEthereum = 0xa1517cCe0bE75700A8838EA1cEE0dc383cd3A332;
@@ -53,6 +55,10 @@ contract Triggers is BaseTriggers {
         addTriggers(
             chainAbi(Chains.Ethereum, EVaultLiquidate$Abi()),
             evaultLiquidateListener.getTriggers()
+        );
+        addTriggers(
+            chainAbi(Chains.Ethereum, EVault$Abi()),
+            evaultParamUpdateListener.getTriggers()
         );
         // addTriggers(
         //     chainAbi(Chains.Base, EVaultLiquidate$Abi()),
