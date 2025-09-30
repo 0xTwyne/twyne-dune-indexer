@@ -6,7 +6,17 @@ import {
   factorySetCollateralVaultLiquidated,
   answerUpdated,
   externalLiquidation,
-  preExternalLiquidation
+  preExternalLiquidation,
+  govSetCaps,
+  govSetConfigFlags,
+  govSetFeeReceiver,
+  govSetGovernorAdmin,
+  govSetHookConfig,
+  govSetInterestFee,
+  govSetInterestRateModel,
+  govSetLiquidationCoolOffTime,
+  govSetLtv,
+  govSetMaxLiquidationDiscount
 } from "./db/schema/Listener";
 import { types, db, App, middlewares } from "@duneanalytics/sim-idx";
 
@@ -976,6 +986,647 @@ app.get("/api/protocolStats", async (c) => {
       error: "Failed to fetch protocol statistics",
       details: (e as Error).message 
     }, { status: 500 });
+  }
+});
+
+// Get governance parameter changes - GovSetCaps
+app.get("/api/gov-set-caps", async (c) => {
+  try {
+    const client = db.client(c);
+    const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
+    const offset = parseInt(c.req.query("offset") || "0");
+    
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
+
+    const vaultAddressParam = c.req.query("vaultAddress");
+    
+    // Build where conditions
+    const whereConditions = [inArray(govSetCaps.chainId, chainIds)];
+    
+    if (vaultAddressParam) {
+      const cleanAddress = vaultAddressParam.startsWith('0x') 
+        ? vaultAddressParam.slice(2) 
+        : vaultAddressParam;
+      
+      if (!/^[0-9a-fA-F]+$/.test(cleanAddress) || cleanAddress.length !== 40) {
+        return Response.json(
+          { error: "Invalid vault address format" },
+          { status: 400 }
+        );
+      }
+      
+      const vaultAddress = Address.from(cleanAddress);
+      whereConditions.push(eq(govSetCaps.vaultAddress, vaultAddress));
+    }
+    
+    const result = await client
+      .select()
+      .from(govSetCaps)
+      .where(and(...whereConditions))
+      .orderBy(desc(govSetCaps.blockNumber))
+      .limit(limit)
+      .offset(offset);
+
+    const totalCountResult = await client
+      .select({ count: count() })
+      .from(govSetCaps)
+      .where(and(...whereConditions));
+
+    return Response.json({
+      events: result,
+      count: result.length,
+      totalCount: totalCountResult[0].count,
+      limit,
+      offset,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("GovSetCaps query failed:", e);
+    return Response.json({ error: (e as Error).message }, { status: 500 });
+  }
+});
+
+// Get governance parameter changes - GovSetConfigFlags
+app.get("/api/gov-set-config-flags", async (c) => {
+  try {
+    const client = db.client(c);
+    const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
+    const offset = parseInt(c.req.query("offset") || "0");
+    
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
+
+    const vaultAddressParam = c.req.query("vaultAddress");
+    
+    const whereConditions = [inArray(govSetConfigFlags.chainId, chainIds)];
+    
+    if (vaultAddressParam) {
+      const cleanAddress = vaultAddressParam.startsWith('0x') 
+        ? vaultAddressParam.slice(2) 
+        : vaultAddressParam;
+      
+      if (!/^[0-9a-fA-F]+$/.test(cleanAddress) || cleanAddress.length !== 40) {
+        return Response.json(
+          { error: "Invalid vault address format" },
+          { status: 400 }
+        );
+      }
+      
+      const vaultAddress = Address.from(cleanAddress);
+      whereConditions.push(eq(govSetConfigFlags.vaultAddress, vaultAddress));
+    }
+    
+    const result = await client
+      .select()
+      .from(govSetConfigFlags)
+      .where(and(...whereConditions))
+      .orderBy(desc(govSetConfigFlags.blockNumber))
+      .limit(limit)
+      .offset(offset);
+
+    const totalCountResult = await client
+      .select({ count: count() })
+      .from(govSetConfigFlags)
+      .where(and(...whereConditions));
+
+    return Response.json({
+      events: result,
+      count: result.length,
+      totalCount: totalCountResult[0].count,
+      limit,
+      offset,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("GovSetConfigFlags query failed:", e);
+    return Response.json({ error: (e as Error).message }, { status: 500 });
+  }
+});
+
+// Get governance parameter changes - GovSetFeeReceiver
+app.get("/api/gov-set-fee-receiver", async (c) => {
+  try {
+    const client = db.client(c);
+    const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
+    const offset = parseInt(c.req.query("offset") || "0");
+    
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
+
+    const vaultAddressParam = c.req.query("vaultAddress");
+    
+    const whereConditions = [inArray(govSetFeeReceiver.chainId, chainIds)];
+    
+    if (vaultAddressParam) {
+      const cleanAddress = vaultAddressParam.startsWith('0x') 
+        ? vaultAddressParam.slice(2) 
+        : vaultAddressParam;
+      
+      if (!/^[0-9a-fA-F]+$/.test(cleanAddress) || cleanAddress.length !== 40) {
+        return Response.json(
+          { error: "Invalid vault address format" },
+          { status: 400 }
+        );
+      }
+      
+      const vaultAddress = Address.from(cleanAddress);
+      whereConditions.push(eq(govSetFeeReceiver.vaultAddress, vaultAddress));
+    }
+    
+    const result = await client
+      .select()
+      .from(govSetFeeReceiver)
+      .where(and(...whereConditions))
+      .orderBy(desc(govSetFeeReceiver.blockNumber))
+      .limit(limit)
+      .offset(offset);
+
+    const totalCountResult = await client
+      .select({ count: count() })
+      .from(govSetFeeReceiver)
+      .where(and(...whereConditions));
+
+    return Response.json({
+      events: result,
+      count: result.length,
+      totalCount: totalCountResult[0].count,
+      limit,
+      offset,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("GovSetFeeReceiver query failed:", e);
+    return Response.json({ error: (e as Error).message }, { status: 500 });
+  }
+});
+
+// Get governance parameter changes - GovSetGovernorAdmin
+app.get("/api/gov-set-governor-admin", async (c) => {
+  try {
+    const client = db.client(c);
+    const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
+    const offset = parseInt(c.req.query("offset") || "0");
+    
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
+
+    const vaultAddressParam = c.req.query("vaultAddress");
+    
+    const whereConditions = [inArray(govSetGovernorAdmin.chainId, chainIds)];
+    
+    if (vaultAddressParam) {
+      const cleanAddress = vaultAddressParam.startsWith('0x') 
+        ? vaultAddressParam.slice(2) 
+        : vaultAddressParam;
+      
+      if (!/^[0-9a-fA-F]+$/.test(cleanAddress) || cleanAddress.length !== 40) {
+        return Response.json(
+          { error: "Invalid vault address format" },
+          { status: 400 }
+        );
+      }
+      
+      const vaultAddress = Address.from(cleanAddress);
+      whereConditions.push(eq(govSetGovernorAdmin.vaultAddress, vaultAddress));
+    }
+    
+    const result = await client
+      .select()
+      .from(govSetGovernorAdmin)
+      .where(and(...whereConditions))
+      .orderBy(desc(govSetGovernorAdmin.blockNumber))
+      .limit(limit)
+      .offset(offset);
+
+    const totalCountResult = await client
+      .select({ count: count() })
+      .from(govSetGovernorAdmin)
+      .where(and(...whereConditions));
+
+    return Response.json({
+      events: result,
+      count: result.length,
+      totalCount: totalCountResult[0].count,
+      limit,
+      offset,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("GovSetGovernorAdmin query failed:", e);
+    return Response.json({ error: (e as Error).message }, { status: 500 });
+  }
+});
+
+// Get governance parameter changes - GovSetHookConfig
+app.get("/api/gov-set-hook-config", async (c) => {
+  try {
+    const client = db.client(c);
+    const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
+    const offset = parseInt(c.req.query("offset") || "0");
+    
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
+
+    const vaultAddressParam = c.req.query("vaultAddress");
+    
+    const whereConditions = [inArray(govSetHookConfig.chainId, chainIds)];
+    
+    if (vaultAddressParam) {
+      const cleanAddress = vaultAddressParam.startsWith('0x') 
+        ? vaultAddressParam.slice(2) 
+        : vaultAddressParam;
+      
+      if (!/^[0-9a-fA-F]+$/.test(cleanAddress) || cleanAddress.length !== 40) {
+        return Response.json(
+          { error: "Invalid vault address format" },
+          { status: 400 }
+        );
+      }
+      
+      const vaultAddress = Address.from(cleanAddress);
+      whereConditions.push(eq(govSetHookConfig.vaultAddress, vaultAddress));
+    }
+    
+    const result = await client
+      .select()
+      .from(govSetHookConfig)
+      .where(and(...whereConditions))
+      .orderBy(desc(govSetHookConfig.blockNumber))
+      .limit(limit)
+      .offset(offset);
+
+    const totalCountResult = await client
+      .select({ count: count() })
+      .from(govSetHookConfig)
+      .where(and(...whereConditions));
+
+    return Response.json({
+      events: result,
+      count: result.length,
+      totalCount: totalCountResult[0].count,
+      limit,
+      offset,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("GovSetHookConfig query failed:", e);
+    return Response.json({ error: (e as Error).message }, { status: 500 });
+  }
+});
+
+// Get governance parameter changes - GovSetInterestFee
+app.get("/api/gov-set-interest-fee", async (c) => {
+  try {
+    const client = db.client(c);
+    const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
+    const offset = parseInt(c.req.query("offset") || "0");
+    
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
+
+    const vaultAddressParam = c.req.query("vaultAddress");
+    
+    const whereConditions = [inArray(govSetInterestFee.chainId, chainIds)];
+    
+    if (vaultAddressParam) {
+      const cleanAddress = vaultAddressParam.startsWith('0x') 
+        ? vaultAddressParam.slice(2) 
+        : vaultAddressParam;
+      
+      if (!/^[0-9a-fA-F]+$/.test(cleanAddress) || cleanAddress.length !== 40) {
+        return Response.json(
+          { error: "Invalid vault address format" },
+          { status: 400 }
+        );
+      }
+      
+      const vaultAddress = Address.from(cleanAddress);
+      whereConditions.push(eq(govSetInterestFee.vaultAddress, vaultAddress));
+    }
+    
+    const result = await client
+      .select()
+      .from(govSetInterestFee)
+      .where(and(...whereConditions))
+      .orderBy(desc(govSetInterestFee.blockNumber))
+      .limit(limit)
+      .offset(offset);
+
+    const totalCountResult = await client
+      .select({ count: count() })
+      .from(govSetInterestFee)
+      .where(and(...whereConditions));
+
+    return Response.json({
+      events: result,
+      count: result.length,
+      totalCount: totalCountResult[0].count,
+      limit,
+      offset,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("GovSetInterestFee query failed:", e);
+    return Response.json({ error: (e as Error).message }, { status: 500 });
+  }
+});
+
+// Get governance parameter changes - GovSetInterestRateModel
+app.get("/api/gov-set-interest-rate-model", async (c) => {
+  try {
+    const client = db.client(c);
+    const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
+    const offset = parseInt(c.req.query("offset") || "0");
+    
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
+
+    const vaultAddressParam = c.req.query("vaultAddress");
+    
+    const whereConditions = [inArray(govSetInterestRateModel.chainId, chainIds)];
+    
+    if (vaultAddressParam) {
+      const cleanAddress = vaultAddressParam.startsWith('0x') 
+        ? vaultAddressParam.slice(2) 
+        : vaultAddressParam;
+      
+      if (!/^[0-9a-fA-F]+$/.test(cleanAddress) || cleanAddress.length !== 40) {
+        return Response.json(
+          { error: "Invalid vault address format" },
+          { status: 400 }
+        );
+      }
+      
+      const vaultAddress = Address.from(cleanAddress);
+      whereConditions.push(eq(govSetInterestRateModel.vaultAddress, vaultAddress));
+    }
+    
+    const result = await client
+      .select()
+      .from(govSetInterestRateModel)
+      .where(and(...whereConditions))
+      .orderBy(desc(govSetInterestRateModel.blockNumber))
+      .limit(limit)
+      .offset(offset);
+
+    const totalCountResult = await client
+      .select({ count: count() })
+      .from(govSetInterestRateModel)
+      .where(and(...whereConditions));
+
+    return Response.json({
+      events: result,
+      count: result.length,
+      totalCount: totalCountResult[0].count,
+      limit,
+      offset,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("GovSetInterestRateModel query failed:", e);
+    return Response.json({ error: (e as Error).message }, { status: 500 });
+  }
+});
+
+// Get governance parameter changes - GovSetLiquidationCoolOffTime
+app.get("/api/gov-set-liquidation-cool-off-time", async (c) => {
+  try {
+    const client = db.client(c);
+    const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
+    const offset = parseInt(c.req.query("offset") || "0");
+    
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
+
+    const vaultAddressParam = c.req.query("vaultAddress");
+    
+    const whereConditions = [inArray(govSetLiquidationCoolOffTime.chainId, chainIds)];
+    
+    if (vaultAddressParam) {
+      const cleanAddress = vaultAddressParam.startsWith('0x') 
+        ? vaultAddressParam.slice(2) 
+        : vaultAddressParam;
+      
+      if (!/^[0-9a-fA-F]+$/.test(cleanAddress) || cleanAddress.length !== 40) {
+        return Response.json(
+          { error: "Invalid vault address format" },
+          { status: 400 }
+        );
+      }
+      
+      const vaultAddress = Address.from(cleanAddress);
+      whereConditions.push(eq(govSetLiquidationCoolOffTime.vaultAddress, vaultAddress));
+    }
+    
+    const result = await client
+      .select()
+      .from(govSetLiquidationCoolOffTime)
+      .where(and(...whereConditions))
+      .orderBy(desc(govSetLiquidationCoolOffTime.blockNumber))
+      .limit(limit)
+      .offset(offset);
+
+    const totalCountResult = await client
+      .select({ count: count() })
+      .from(govSetLiquidationCoolOffTime)
+      .where(and(...whereConditions));
+
+    return Response.json({
+      events: result,
+      count: result.length,
+      totalCount: totalCountResult[0].count,
+      limit,
+      offset,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("GovSetLiquidationCoolOffTime query failed:", e);
+    return Response.json({ error: (e as Error).message }, { status: 500 });
+  }
+});
+
+// Get governance parameter changes - GovSetLtv
+app.get("/api/gov-set-ltv", async (c) => {
+  try {
+    const client = db.client(c);
+    const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
+    const offset = parseInt(c.req.query("offset") || "0");
+    
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
+
+    const vaultAddressParam = c.req.query("vaultAddress");
+    
+    const whereConditions = [inArray(govSetLtv.chainId, chainIds)];
+    
+    if (vaultAddressParam) {
+      const cleanAddress = vaultAddressParam.startsWith('0x') 
+        ? vaultAddressParam.slice(2) 
+        : vaultAddressParam;
+      
+      if (!/^[0-9a-fA-F]+$/.test(cleanAddress) || cleanAddress.length !== 40) {
+        return Response.json(
+          { error: "Invalid vault address format" },
+          { status: 400 }
+        );
+      }
+      
+      const vaultAddress = Address.from(cleanAddress);
+      whereConditions.push(eq(govSetLtv.vaultAddress, vaultAddress));
+    }
+    
+    const result = await client
+      .select()
+      .from(govSetLtv)
+      .where(and(...whereConditions))
+      .orderBy(desc(govSetLtv.blockNumber))
+      .limit(limit)
+      .offset(offset);
+
+    const totalCountResult = await client
+      .select({ count: count() })
+      .from(govSetLtv)
+      .where(and(...whereConditions));
+
+    return Response.json({
+      events: result,
+      count: result.length,
+      totalCount: totalCountResult[0].count,
+      limit,
+      offset,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("GovSetLtv query failed:", e);
+    return Response.json({ error: (e as Error).message }, { status: 500 });
+  }
+});
+
+// Get governance parameter changes - GovSetMaxLiquidationDiscount
+app.get("/api/gov-set-max-liquidation-discount", async (c) => {
+  try {
+    const client = db.client(c);
+    const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
+    const offset = parseInt(c.req.query("offset") || "0");
+    
+    const chainIdsParam = c.req.query("chainIds");
+    let chainIds: types.Uint[];
+    if (!chainIdsParam) {
+      chainIds = supportedChains;
+    } else {
+      chainIds = chainIdsParam
+        .split(",")
+        .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
+    }
+
+    const vaultAddressParam = c.req.query("vaultAddress");
+    
+    const whereConditions = [inArray(govSetMaxLiquidationDiscount.chainId, chainIds)];
+    
+    if (vaultAddressParam) {
+      const cleanAddress = vaultAddressParam.startsWith('0x') 
+        ? vaultAddressParam.slice(2) 
+        : vaultAddressParam;
+      
+      if (!/^[0-9a-fA-F]+$/.test(cleanAddress) || cleanAddress.length !== 40) {
+        return Response.json(
+          { error: "Invalid vault address format" },
+          { status: 400 }
+        );
+      }
+      
+      const vaultAddress = Address.from(cleanAddress);
+      whereConditions.push(eq(govSetMaxLiquidationDiscount.vaultAddress, vaultAddress));
+    }
+    
+    const result = await client
+      .select()
+      .from(govSetMaxLiquidationDiscount)
+      .where(and(...whereConditions))
+      .orderBy(desc(govSetMaxLiquidationDiscount.blockNumber))
+      .limit(limit)
+      .offset(offset);
+
+    const totalCountResult = await client
+      .select({ count: count() })
+      .from(govSetMaxLiquidationDiscount)
+      .where(and(...whereConditions));
+
+    return Response.json({
+      events: result,
+      count: result.length,
+      totalCount: totalCountResult[0].count,
+      limit,
+      offset,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("GovSetMaxLiquidationDiscount query failed:", e);
+    return Response.json({ error: (e as Error).message }, { status: 500 });
   }
 });
 
