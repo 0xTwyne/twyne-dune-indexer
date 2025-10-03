@@ -424,7 +424,7 @@ app.get("/api/collateralVaults/external-liquidations", async (c) => {
         debtAmount: externalLiquidation.debtAmount,
         collateralAmountUsd: externalLiquidation.collateralAmountUsd,
         debtAmountUsd: externalLiquidation.debtAmountUsd,
-        liqLtv: externalLiquidation.liqLtv,
+        liqLtv: preExternalLiquidation.liqLtv,
         preCollateralAmount: preExternalLiquidation.collateralAmount,
         preCollateralAmountUsd: preExternalLiquidation.collateralAmountUsd,
         preDebtAmount: preExternalLiquidation.debtAmount,
