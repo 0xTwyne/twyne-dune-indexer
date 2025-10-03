@@ -43,19 +43,21 @@ contract PerBlockListener is Raw$OnBlock {
     function onBlock(RawBlockContext memory ctx) external override {
         if (block.chainid == 1) { // Ethereum mainnet
             if (ctx.blockNumber % 10 == 0) {
-                address[] memory vaults = new address[](6);
+                address[] memory vaults = new address[](7);
                 address eeWeth = 0x87b8081A3ace680f35125F469526Ac10f5418Ca7;
+                address eeWsteth = 0x7613D202Af490c3d1cE1873b0a7022a34E89815f;
                 address eUsdc = 0x797DD80692c3b2dAdabCe8e30C07fDE5307D48a9;
                 address eWeth = 0xD8b27CF359b7D15710a5BE299AF6e7Bf904984C2;
                 address eUsdt = 0x313603FA690301b0CaeEf8069c065862f9162162;
                 address eWbtc = 0x998D761eC1BAdaCeb064624cc3A1d37A46C88bA4;
                 address eWsteth = 0xbC4B4AC47582c3E38Ce5940B80Da65401F4628f1;
                 vaults[0] = eeWeth;
-                vaults[1] = eUsdc;
-                vaults[2] = eWeth;
-                vaults[3] = eUsdt;
-                vaults[4] = eWbtc;
-                vaults[5] = eWsteth;
+                vaults[1] = eeWsteth;
+                vaults[2] = eUsdc;
+                vaults[3] = eWeth;
+                vaults[4] = eUsdt;
+                vaults[5] = eWbtc;
+                vaults[6] = eWsteth;
                 for (uint256 i = 0; i < vaults.length; i++) {
                     _captureVaultData(vaults[i], ctx.blockNumber);
                 }
