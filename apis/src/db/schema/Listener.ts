@@ -163,6 +163,7 @@ export const govSetMaxLiquidationDiscount = table("gov_set_max_liquidation_disco
 export const positionSnapshot = table("position_snapshot", {
   chainId: db.uint256('chain_id'),
   vaultAddress: db.address('vault_address'),
+  underlyingCollateralVault: db.address('underlying_collateral_vault'),
   creditVault: db.address('credit_vault'),
   debtVault: db.address('debt_vault'),
   maxRelease: db.uint256('max_release'),

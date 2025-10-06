@@ -123,6 +123,7 @@ contract TwyneVaultListener is
     struct PositionSnapshotData {
         uint256 chainId;
         address vaultAddress;
+        address underlyingCollateralVault;
         address creditVault;
         address debtVault;
         uint256 maxRelease;
@@ -152,7 +153,8 @@ contract TwyneVaultListener is
     function getPositionSnapshot(address vaultAddress) internal returns (PositionSnapshotData memory) {
         PositionSnapshotData memory data;
         IEulerCollateralVault collateralVault = IEulerCollateralVault(vaultAddress);
-        data.creditVault = collateralVault.asset();
+        data.creditVault = collateralVault.intermediateVault();
+        data.underlyingCollateralVault = collateralVault.asset();
         data.debtVault = collateralVault.targetVault();
         data.maxRelease = collateralVault.maxRelease();
         data.maxRepay = collateralVault.maxRepay();
@@ -171,6 +173,7 @@ contract TwyneVaultListener is
             chainId: uint256(block.chainid),
             vaultAddress: vaultAddress,
             creditVault: data.creditVault,
+            underlyingCollateralVault: data.underlyingCollateralVault,
             debtVault: data.debtVault,
             maxRelease: data.maxRelease,
             maxRepay: data.maxRepay,
