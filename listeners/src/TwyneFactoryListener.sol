@@ -28,6 +28,7 @@ contract TwyneFactoryListener is
         bytes32 txnHash;
         address asset;
         address intermediateVault;
+        address underlyingCollateralVault;
         address targetAsset;
         address targetVault;
         uint256 twyneLiqLtv;
@@ -56,6 +57,7 @@ contract TwyneFactoryListener is
         address collateralVault;
         address creditVault;
         address debtVault;
+        address underlyingCollateralVault;
         address liquidatorAddress;
         uint64 blockNumber;
         uint64 blockTimestamp;
@@ -85,6 +87,7 @@ contract TwyneFactoryListener is
     ) external override {
         address asset = IEulerCollateralVault(inputs.vault).asset();
         address intermediateVault = IEulerCollateralVault(inputs.vault).intermediateVault();
+        address underlyingCollateralVault = IEulerCollateralVault(inputs.vault).asset();
         address targetAsset = IEulerCollateralVault(inputs.vault).targetAsset();
         address targetVault = IEulerCollateralVault(inputs.vault).targetVault();
         uint256 twyneLiqLtv = IEulerCollateralVault(inputs.vault).twyneLiqLTV();
@@ -100,6 +103,7 @@ contract TwyneFactoryListener is
             txnHash: ctx.txn.hash(),
             asset: asset,
             intermediateVault: intermediateVault,
+            underlyingCollateralVault: underlyingCollateralVault,
             targetAsset: targetAsset,
             targetVault: targetVault,
             twyneLiqLtv: twyneLiqLtv,
@@ -125,6 +129,7 @@ contract TwyneFactoryListener is
         address collateralVault;
         address creditVault;
         address debtVault;
+        address underlyingCollateralVault;
         uint256 maxRelease;
         uint256 maxRepay;
         uint256 totalAssetsDepositedOrReserved;
@@ -144,13 +149,14 @@ contract TwyneFactoryListener is
         CollateralLiquidationProcessingData memory data;
         
         // Populate processing data
-        data.creditVault = IEulerCollateralVault(inputs.collateralVault).asset();
+        data.creditVault = IEulerCollateralVault(inputs.collateralVault).intermediateVault();
+        data.debtVault = IEulerCollateralVault(inputs.collateralVault).targetVault();
+        data.underlyingCollateralVault = IEulerCollateralVault(inputs.collateralVault).asset();
         data.maxRelease = IEulerCollateralVault(inputs.collateralVault).maxRelease();
         data.maxRepay = IEulerCollateralVault(inputs.collateralVault).maxRepay();
         data.totalAssetsDepositedOrReserved = IEulerCollateralVault(inputs.collateralVault).totalAssetsDepositedOrReserved();
         data.userOwnedCollateral = data.totalAssetsDepositedOrReserved - data.maxRelease;
         data.twyneLiqLtv = IEulerCollateralVault(inputs.collateralVault).twyneLiqLTV();
-        data.debtVault = IEulerCollateralVault(inputs.collateralVault).targetVault();
         data.maxReleaseUsd = _getQuote(data.creditVault, data.maxRelease);
         data.maxRepayUsd = _getQuote(data.debtVault, data.maxRepay);
         data.totalAssetsDepositedOrReservedUsd = _getQuote(data.creditVault, data.totalAssetsDepositedOrReserved);
@@ -161,6 +167,7 @@ contract TwyneFactoryListener is
             factoryAddress: ctx.txn.call.callee(),
             collateralVault: inputs.collateralVault,
             creditVault: data.creditVault,
+            underlyingCollateralVault: data.underlyingCollateralVault,
             debtVault: data.debtVault,
             liquidatorAddress: inputs.liquidator,
             blockNumber: uint64(block.number),
