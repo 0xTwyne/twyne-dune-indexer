@@ -429,6 +429,9 @@ app.get("/api/collateralVaults/external-liquidations", async (c) => {
         preCollateralAmountUsd: preExternalLiquidation.collateralAmountUsd,
         preDebtAmount: preExternalLiquidation.debtAmount,
         preDebtAmountUsd: preExternalLiquidation.debtAmountUsd,
+        creditVault: vaultCreated.intermediateVault,
+        debtVault: vaultCreated.targetVault,
+        underlyingCollateralVault: vaultCreated.underlyingCollateralVault,
       })
       .from(externalLiquidation)
       .where(inArray(externalLiquidation.chainId, chainIds))
@@ -551,7 +554,7 @@ app.get("/api/collateralVaults/internal-liquidations", async (c) => {
           f.factory_address,
           f.collateral_vault,
           f.credit_vault,
-          f.underlying_collateral_vault,
+          p.underlying_collateral_vault,
           f.debt_vault,
           f.liquidator_address,
           f.block_number,
@@ -630,7 +633,7 @@ app.get("/api/collateralVaults/internal-liquidations", async (c) => {
               f.factory_address,
               f.collateral_vault,
               f.credit_vault,
-              f.underlying_collateral_vault,
+              p.underlying_collateral_vault,
               f.debt_vault,
               f.liquidator_address,
               f.block_number,
