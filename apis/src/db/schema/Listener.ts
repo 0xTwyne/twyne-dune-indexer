@@ -195,7 +195,12 @@ export const preExternalLiquidation = table("pre_external_liquidation", {
   debtAmount: db.uint256('debt_amount'),
   collateralAmountUsd: db.uint256('collateral_amount_usd'),
   debtAmountUsd: db.uint256('debt_amount_usd'),
-  liqLtv: db.uint256('liq_ltv'),
+  eulerLiqLtv: db.uint256('euler_liq_ltv'),
+  twyneLiqLtv: db.uint256('twyne_liq_ltv'),
+  creditReserved: db.uint256('credit_reserved'),
+  creditReservedUsd: db.uint256('credit_reserved_usd'),
+  twyneMaxLiqLtv: db.uint256('twyne_max_liq_ltv'),
+  twyneSafetyBuffer: db.uint256('twyne_safety_buffer'),
 })
 
 export const vaultBorrow = table("vault_borrow", {
