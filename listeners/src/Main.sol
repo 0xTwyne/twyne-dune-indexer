@@ -53,10 +53,10 @@ contract Triggers is BaseTriggers {
             chainGlobal(Chains.Ethereum),
             perBlockListener.getTriggers()
         );
-        addTriggers(
-            chainGlobal(Chains.Ethereum),
-            vaultListener.getRawTriggers()
-        );
+        // addTriggers(
+        //     chainGlobal(Chains.Ethereum),
+        //     vaultListener.getRawTriggers()
+        // );
 
         // Oracles
         addTriggers(

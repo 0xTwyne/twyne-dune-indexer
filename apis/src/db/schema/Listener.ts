@@ -181,6 +181,8 @@ export const positionSnapshot = table("position_snapshot", {
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
   logIndex: db.uint256('log_index'),
+  creditVaultTotalAssets: db.uint256('credit_vault_total_assets'),
+  creditVaultTotalBorrows: db.uint256('credit_vault_total_borrows'),
 })
 
 export const preExternalLiquidation = table("pre_external_liquidation", {
