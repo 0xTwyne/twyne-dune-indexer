@@ -183,6 +183,8 @@ export const positionSnapshot = table("position_snapshot", {
   logIndex: db.uint256('log_index'),
   creditVaultTotalAssets: db.uint256('credit_vault_total_assets'),
   creditVaultTotalBorrows: db.uint256('credit_vault_total_borrows'),
+  state: t.text('state'),
+  txType: t.text('tx_type'),
 })
 
 export const preExternalLiquidation = table("pre_external_liquidation", {

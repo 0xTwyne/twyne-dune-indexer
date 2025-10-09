@@ -175,7 +175,7 @@ app.get("/api/collateralVaults/latest-snapshots", async (c) => {
           inArray(positionSnapshot.chainId, chainIds)
         )
       )
-      .orderBy(desc(positionSnapshot.blockTimestamp))
+      .orderBy(desc(positionSnapshot.blockTimestamp), desc(positionSnapshot.logIndex))
       .limit(limit)
       .offset(offset);
 
@@ -424,7 +424,12 @@ app.get("/api/collateralVaults/external-liquidations", async (c) => {
         debtAmount: externalLiquidation.debtAmount,
         collateralAmountUsd: externalLiquidation.collateralAmountUsd,
         debtAmountUsd: externalLiquidation.debtAmountUsd,
-        liqLtv: preExternalLiquidation.liqLtv,
+        eulerLiqLtv: preExternalLiquidation.eulerLiqLtv,
+        twyneLiqLtv: preExternalLiquidation.twyneLiqLtv,
+        creditReserved: preExternalLiquidation.creditReserved,
+        creditReservedUsd: preExternalLiquidation.creditReservedUsd,
+        twyneMaxLiqLtv: preExternalLiquidation.twyneMaxLiqLtv,
+        twyneSafetyBuffer: preExternalLiquidation.twyneSafetyBuffer,
         preCollateralAmount: preExternalLiquidation.collateralAmount,
         preCollateralAmountUsd: preExternalLiquidation.collateralAmountUsd,
         preDebtAmount: preExternalLiquidation.debtAmount,

@@ -143,6 +143,8 @@ contract TwyneVaultListener is
         uint256 logIndex;
         uint256 creditVaultTotalAssets;
         uint256 creditVaultTotalBorrows;
+        string state;
+        string txType;
     }
 
     function _getQuote(address vaultAddress, uint256 inAmount) internal returns (uint256) {
@@ -153,7 +155,7 @@ contract TwyneVaultListener is
         }
     }
 
-    function getPositionSnapshot(address vaultAddress) internal returns (PositionSnapshotData memory) {
+    function getPositionSnapshot(address vaultAddress, string memory state, string memory txType) internal returns (PositionSnapshotData memory) {
         PositionSnapshotData memory data;
         IEulerCollateralVault collateralVault = IEulerCollateralVault(vaultAddress);
         data.creditVault = collateralVault.intermediateVault();
@@ -204,7 +206,9 @@ contract TwyneVaultListener is
             userOwnedCollateralUsd: data.userOwnedCollateralUsd,
             logIndex: logIndex,
             creditVaultTotalAssets: data.creditVaultTotalAssets,
-            creditVaultTotalBorrows: data.creditVaultTotalBorrows
+            creditVaultTotalBorrows: data.creditVaultTotalBorrows,
+            state: state,
+            txType: txType
         });
     }
 
@@ -212,8 +216,7 @@ contract TwyneVaultListener is
         PreFunctionContext memory ctx,
         EulerCollateralVault$DepositFunctionInputs memory inputs
     ) external override {
-        logIndex += 1;
-        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee());
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "pre", "deposit");
         emit PositionSnapshot(snapshot);
     }
 
@@ -221,12 +224,9 @@ contract TwyneVaultListener is
         EventContext memory ctx, 
         EulerCollateralVault$TDepositEventParams memory inputs
     ) external override {
-        address vaultAddress = ctx.txn.call.callee();
-        logIndex += 1;
-
         emit VaultDeposit(VaultDepositData({
             chainId: uint256(block.chainid),
-            vaultAddress: vaultAddress,
+            vaultAddress: ctx.txn.call.callee(),
             amount: inputs.amount,
             userAddress: ctx.txn.call.caller(),
             blockNumber: uint64(block.number),
@@ -234,16 +234,16 @@ contract TwyneVaultListener is
             txnHash: ctx.txn.hash(),
             logIndex: logIndex
         }));
-        PositionSnapshotData memory snapshot = getPositionSnapshot(vaultAddress);
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "post", "deposit");
         emit PositionSnapshot(snapshot);
+        logIndex += 1;
     }
 
     function preDepositUnderlyingFunction(
         PreFunctionContext memory ctx,
         EulerCollateralVault$DepositUnderlyingFunctionInputs memory inputs
     ) external override {
-        logIndex += 1;
-        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee());
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "pre", "depositUnderlying");
         emit PositionSnapshot(snapshot);
     }
 
@@ -251,12 +251,9 @@ contract TwyneVaultListener is
         EventContext memory ctx, 
         EulerCollateralVault$TDepositUnderlyingEventParams memory inputs
     ) external override {
-        address vaultAddress = ctx.txn.call.callee();
-        logIndex += 1;
-
         emit VaultDepositUnderlying(VaultDepositUnderlyingData({
             chainId: uint256(block.chainid),
-            vaultAddress: vaultAddress,
+            vaultAddress: ctx.txn.call.callee(),
             amount: inputs.amount,
             userAddress: ctx.txn.call.caller(),
             blockNumber: uint64(block.number),
@@ -264,16 +261,16 @@ contract TwyneVaultListener is
             txnHash: ctx.txn.hash(),
             logIndex: logIndex
         }));
-        PositionSnapshotData memory snapshot = getPositionSnapshot(vaultAddress);
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "post", "depositUnderlying");
         emit PositionSnapshot(snapshot);
+        logIndex += 1;
     }
 
     function preWithdrawFunction(
         PreFunctionContext memory ctx,
         EulerCollateralVault$WithdrawFunctionInputs memory inputs
     ) external override {
-        logIndex += 1;
-        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee());
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "pre", "withdraw");
         emit PositionSnapshot(snapshot);
     }
 
@@ -281,12 +278,9 @@ contract TwyneVaultListener is
         EventContext memory ctx, 
         EulerCollateralVault$TWithdrawEventParams memory inputs
     ) external override {
-        address vaultAddress = ctx.txn.call.callee();
-        logIndex += 1;
-
         emit VaultWithdraw(VaultWithdrawData({
             chainId: uint256(block.chainid),
-            vaultAddress: vaultAddress,
+            vaultAddress: ctx.txn.call.callee(),
             amount: inputs.amount,
             receiver: inputs.receiver,
             userAddress: ctx.txn.call.caller(),
@@ -295,16 +289,16 @@ contract TwyneVaultListener is
             txnHash: ctx.txn.hash(),
             logIndex: logIndex
         }));
-        PositionSnapshotData memory snapshot = getPositionSnapshot(vaultAddress);
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "post", "withdraw");
         emit PositionSnapshot(snapshot);
+        logIndex += 1;
     }
 
     function preBorrowFunction(
         PreFunctionContext memory ctx,
         EulerCollateralVault$BorrowFunctionInputs memory inputs
     ) external override {
-        logIndex += 1;
-        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee());
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "pre", "borrow");
         emit PositionSnapshot(snapshot);
     }
 
@@ -312,12 +306,9 @@ contract TwyneVaultListener is
         EventContext memory ctx, 
         EulerCollateralVault$TBorrowEventParams memory inputs
     ) external override {
-        address vaultAddress = ctx.txn.call.callee();
-        logIndex += 1;
-
         emit VaultBorrow(VaultBorrowData({
             chainId: uint256(block.chainid),
-            vaultAddress: vaultAddress,
+            vaultAddress: ctx.txn.call.callee(),
             targetAmount: inputs.targetAmount,
             receiver: inputs.receiver,
             borrowerAddress: ctx.txn.call.caller(),
@@ -326,16 +317,16 @@ contract TwyneVaultListener is
             txnHash: ctx.txn.hash(),
             logIndex: logIndex
         }));
-        PositionSnapshotData memory snapshot = getPositionSnapshot(vaultAddress);
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "post", "borrow");
         emit PositionSnapshot(snapshot);
+        logIndex += 1;
     }
 
     function preRepayFunction(
         PreFunctionContext memory ctx,
         EulerCollateralVault$RepayFunctionInputs memory inputs
     ) external override {
-        logIndex += 1;
-        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee());
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "pre", "repay");
         emit PositionSnapshot(snapshot);
     }
 
@@ -343,12 +334,9 @@ contract TwyneVaultListener is
         EventContext memory ctx, 
         EulerCollateralVault$TRepayEventParams memory inputs
     ) external override {
-        address vaultAddress = ctx.txn.call.callee();
-        logIndex += 1;
-
         emit VaultRepay(VaultRepayData({
             chainId: uint256(block.chainid),
-            vaultAddress: vaultAddress,
+            vaultAddress: ctx.txn.call.callee(),
             repayAmount: inputs.repayAmount,
             userAddress: ctx.txn.call.caller(),
             blockNumber: uint64(block.number),
@@ -356,16 +344,16 @@ contract TwyneVaultListener is
             txnHash: ctx.txn.hash(),
             logIndex: logIndex
         }));
-        PositionSnapshotData memory snapshot = getPositionSnapshot(vaultAddress);
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "post", "repay");
         emit PositionSnapshot(snapshot);
+        logIndex += 1;
     }
 
     function preTeleportFunction(
         PreFunctionContext memory ctx,
         EulerCollateralVault$TeleportFunctionInputs memory inputs
     ) external override {
-        logIndex += 1;
-        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee());
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "pre", "teleport");
         emit PositionSnapshot(snapshot);
     }
 
@@ -373,12 +361,9 @@ contract TwyneVaultListener is
         EventContext memory ctx, 
         EulerCollateralVault$TTeleportEventParams memory inputs
     ) external override {
-        address vaultAddress = ctx.txn.call.callee();
-        logIndex += 1;
-
         emit VaultTeleport(VaultTeleportData({
             chainId: uint256(block.chainid),
-            vaultAddress: vaultAddress,
+            vaultAddress: ctx.txn.call.callee(),
             toDeposit: inputs.toDeposit,
             toBorrow: inputs.toBorrow,
             userAddress: ctx.txn.call.caller(),
@@ -387,24 +372,24 @@ contract TwyneVaultListener is
             txnHash: ctx.txn.hash(),
             logIndex: logIndex
         }));
-        PositionSnapshotData memory snapshot = getPositionSnapshot(vaultAddress);
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "post", "teleport");
         emit PositionSnapshot(snapshot);
+        logIndex += 1;
     }
 
     function preLiquidateFunction(
         PreFunctionContext memory ctx
     ) external override {
-        logIndex += 1;
-        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee());
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "pre", "liquidate");
         emit PositionSnapshot(snapshot);
     }
 
     function onLiquidateFunction(
         FunctionContext memory ctx
     ) external override {
-        logIndex += 1;
-        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee());
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "post", "liquidate");
         emit PositionSnapshot(snapshot);
+        logIndex += 1;
     }
 
     function getTriggers() external view returns (Trigger[] memory) {
