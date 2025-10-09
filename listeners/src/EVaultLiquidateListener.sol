@@ -33,6 +33,8 @@ contract EVaultLiquidateListener is
         uint256 collateralAmountUsd;
         uint256 debtAmountUsd;
         uint256 liqLtv;
+        uint256 creditReserved;
+        uint256 creditReservedUsd;
     }
 
     event PreExternalLiquidation(PreExternalLiquidationData);
@@ -65,6 +67,8 @@ contract EVaultLiquidateListener is
         uint256 liqLtv;
         uint256 repayAssetsUsd;
         uint256 yieldBalanceUsd;
+        uint256 creditReserved;
+        uint256 creditReservedUsd;
     }
 
     struct PreLiquidationData {
@@ -128,6 +132,13 @@ contract EVaultLiquidateListener is
         data.repayAssetsUsd = _getQuote(ctx.txn.call.callee(), inputs.repayAssets);
         data.yieldBalanceUsd = _getQuote(inputs.collateral, inputs.yieldBalance);
 
+        try IEulerCollateralVault(inputs.violator).maxRelease() returns (uint256 creditReserved) {
+            data.creditReserved = creditReserved;
+        } catch {
+            data.creditReserved = 0;
+        }
+        data.creditReservedUsd = _getQuote(inputs.collateral, data.creditReserved);
+
         emit ExternalLiquidation(ExternalLiquidationData({
             chainId: uint256(block.chainid),
             vaultAddress: ctx.txn.call.callee(),
@@ -145,7 +156,9 @@ contract EVaultLiquidateListener is
             debtAmount: data.debtAmount,
             collateralAmountUsd: data.collateralAmountUsd,
             debtAmountUsd: data.debtAmountUsd,
-            liqLtv: data.liqLtv
+            liqLtv: data.liqLtv,
+            creditReserved: data.creditReserved,
+            creditReservedUsd: data.creditReservedUsd
         }));
     }
 
