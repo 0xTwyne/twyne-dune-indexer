@@ -152,15 +152,16 @@ app.get("/api/collateralVaults/latest-snapshots", async (c) => {
       additionalConditions.push(sql`is_externally_liquidated = ${isExternallyLiquidatedValue}`);
     }
     
-    // Build the base subquery for latest snapshots
+    // Build the base subquery for latest snapshots (only "post" state to avoid double counting)
     let baseSubquery = sql`
       SELECT vault_address, MAX(block_timestamp) as max_timestamp
       FROM ${positionSnapshot}
+      WHERE state = 'post'
     `;
     
-    // Add filters to subquery if needed
+    // Add additional filters to subquery if needed
     if (additionalConditions.length > 0) {
-      baseSubquery = sql`${baseSubquery} WHERE ${sql.join(additionalConditions, sql` AND `)}`;
+      baseSubquery = sql`${baseSubquery} AND ${sql.join(additionalConditions, sql` AND `)}`;
     }
     
     baseSubquery = sql`${baseSubquery} GROUP BY vault_address`;
@@ -172,17 +173,18 @@ app.get("/api/collateralVaults/latest-snapshots", async (c) => {
       .where(
         and(
           sql`(vault_address, block_timestamp) IN (${baseSubquery})`,
-          inArray(positionSnapshot.chainId, chainIds)
+          inArray(positionSnapshot.chainId, chainIds),
+          sql`state = 'post'`
         )
       )
       .orderBy(desc(positionSnapshot.blockTimestamp), desc(positionSnapshot.logIndex))
       .limit(limit)
       .offset(offset);
 
-    // Get total count of unique vault addresses with snapshots (applying same filters)
-    let countQuery = sql`SELECT COUNT(DISTINCT vault_address) as count FROM ${positionSnapshot}`;
+    // Get total count of unique vault addresses with snapshots (applying same filters including "post" state)
+    let countQuery = sql`SELECT COUNT(DISTINCT vault_address) as count FROM ${positionSnapshot} WHERE state = 'post'`;
     if (additionalConditions.length > 0) {
-      countQuery = sql`${countQuery} WHERE ${sql.join(additionalConditions, sql` AND `)}`;
+      countQuery = sql`${countQuery} AND ${sql.join(additionalConditions, sql` AND `)}`;
     }
     
     const totalUniqueVaultsResult = await client.execute(countQuery);
@@ -245,11 +247,16 @@ app.get("/api/collateralVaults/:address/latest-snapshot", async (c) => {
     // Convert to proper Address type
     const vaultAddress = Address.from(cleanAddress);
 
-    // Get the latest snapshot for this specific vault
+    // Get the latest snapshot for this specific vault (only "post" state to avoid double counting)
     const latestSnapshot = await client
       .select()
       .from(positionSnapshot)
-      .where(eq(positionSnapshot.vaultAddress, vaultAddress))
+      .where(
+        and(
+          eq(positionSnapshot.vaultAddress, vaultAddress),
+          sql`state = 'post'`
+        )
+      )
       .orderBy(desc(positionSnapshot.blockTimestamp))
       .limit(1);
 
@@ -935,10 +942,11 @@ app.get("/api/protocolStats", async (c) => {
         .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
     }
 
-    // Build the base subquery for latest snapshots (same logic as latest-snapshots endpoint)
+    // Build the base subquery for latest snapshots (only "post" state to avoid double counting)
     const baseSubquery = sql`
       SELECT vault_address, MAX(block_timestamp) as max_timestamp
       FROM ${positionSnapshot}
+      WHERE state = 'post'
       GROUP BY vault_address
     `;
     
@@ -953,7 +961,8 @@ app.get("/api/protocolStats", async (c) => {
       .where(
         and(
           sql`(vault_address, block_timestamp) IN (${baseSubquery})`,
-          inArray(positionSnapshot.chainId, chainIds)
+          inArray(positionSnapshot.chainId, chainIds),
+          sql`state = 'post'`
         )
       );
 
