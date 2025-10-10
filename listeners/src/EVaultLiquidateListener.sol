@@ -5,6 +5,8 @@ import "sim-idx-sol/Simidx.sol";
 import "sim-idx-generated/Generated.sol";
 import {IEVault} from "./interfaces/IEVault.sol";
 import {IEulerRouter} from "./interfaces/IEulerRouter.sol";
+import {IEulerCollateralVault} from "./interfaces/IEulerCollateralVault.sol";
+import {IVaultManager} from "./interfaces/IVaultManager.sol";
 
 contract EVaultLiquidateListener is 
         EVaultLiquidate$OnLiquidateEvent,
@@ -31,6 +33,8 @@ contract EVaultLiquidateListener is
         uint256 collateralAmountUsd;
         uint256 debtAmountUsd;
         uint256 liqLtv;
+        uint256 creditReserved;
+        uint256 creditReservedUsd;
     }
 
     event PreExternalLiquidation(PreExternalLiquidationData);
@@ -46,7 +50,12 @@ contract EVaultLiquidateListener is
         uint256 debtAmount;
         uint256 collateralAmountUsd;
         uint256 debtAmountUsd;
-        uint256 liqLtv;
+        uint256 eulerLiqLtv;
+        uint256 twyneLiqLtv;
+        uint256 creditReserved;
+        uint256 creditReservedUsd;
+        uint256 twyneMaxLiqLtv;
+        uint256 twyneSafetyBuffer;
     }
 
     // Struct to hold intermediate processing data to avoid stack too deep errors
@@ -58,6 +67,8 @@ contract EVaultLiquidateListener is
         uint256 liqLtv;
         uint256 repayAssetsUsd;
         uint256 yieldBalanceUsd;
+        uint256 creditReserved;
+        uint256 creditReservedUsd;
     }
 
     struct PreLiquidationData {
@@ -65,7 +76,12 @@ contract EVaultLiquidateListener is
         uint256 debtAmount;
         uint256 collateralAmountUsd;
         uint256 debtAmountUsd;
-        uint256 liqLtv;
+        uint256 eulerLiqLtv;
+        uint256 twyneLiqLtv;
+        uint256 creditReserved;
+        uint256 creditReservedUsd;
+        uint256 twyneMaxLiqLtv;
+        uint256 twyneSafetyBuffer;
     }
 
     function _getCollateralAmount(address collateralVaultAddress, address userAddress) internal returns (uint256) {
@@ -116,6 +132,13 @@ contract EVaultLiquidateListener is
         data.repayAssetsUsd = _getQuote(ctx.txn.call.callee(), inputs.repayAssets);
         data.yieldBalanceUsd = _getQuote(inputs.collateral, inputs.yieldBalance);
 
+        try IEulerCollateralVault(inputs.violator).maxRelease() returns (uint256 creditReserved) {
+            data.creditReserved = creditReserved;
+        } catch {
+            data.creditReserved = 0;
+        }
+        data.creditReservedUsd = _getQuote(inputs.collateral, data.creditReserved);
+
         emit ExternalLiquidation(ExternalLiquidationData({
             chainId: uint256(block.chainid),
             vaultAddress: ctx.txn.call.callee(),
@@ -133,7 +156,9 @@ contract EVaultLiquidateListener is
             debtAmount: data.debtAmount,
             collateralAmountUsd: data.collateralAmountUsd,
             debtAmountUsd: data.debtAmountUsd,
-            liqLtv: data.liqLtv
+            liqLtv: data.liqLtv,
+            creditReserved: data.creditReserved,
+            creditReservedUsd: data.creditReservedUsd
         }));
     }
 
@@ -146,7 +171,29 @@ contract EVaultLiquidateListener is
         data.debtAmount = _getDebtAmount(ctx.txn.call.callee(), inputs.violator);
         data.collateralAmountUsd = _getQuote(inputs.collateral, data.collateralAmount);
         data.debtAmountUsd = _getQuote(ctx.txn.call.callee(), data.debtAmount);
-        data.liqLtv = _getLiqLtv(inputs.collateral, ctx.txn.call.callee());
+        data.eulerLiqLtv = _getLiqLtv(inputs.collateral, ctx.txn.call.callee());
+
+        try IEulerCollateralVault(inputs.violator).twyneLiqLTV() returns (uint256 twyneLiqLtv) {
+            data.twyneLiqLtv = twyneLiqLtv;
+        } catch {
+            data.twyneLiqLtv = 0;
+        }
+        try IEulerCollateralVault(inputs.violator).maxRelease() returns (uint256 creditReserved) {
+            data.creditReserved = creditReserved;
+        } catch {
+            data.creditReserved = 0;
+        }
+        data.creditReservedUsd = _getQuote(inputs.collateral, data.creditReserved);
+        try IVaultManager(IEulerCollateralVault(inputs.violator).twyneVaultManager()).maxTwyneLTVs(IEulerCollateralVault(inputs.violator).asset()) returns (uint256 twyneMaxLiqLtv) {
+            data.twyneMaxLiqLtv = twyneMaxLiqLtv;
+        } catch {
+            data.twyneMaxLiqLtv = 0;
+        }
+        try IVaultManager(IEulerCollateralVault(inputs.violator).twyneVaultManager()).externalLiqBuffers(IEulerCollateralVault(inputs.violator).asset()) returns (uint256 twyneSafetyBuffer) {
+            data.twyneSafetyBuffer = twyneSafetyBuffer;
+        } catch {
+            data.twyneSafetyBuffer = 0;
+        }
 
         emit PreExternalLiquidation(PreExternalLiquidationData({
             chainId: uint256(block.chainid),
@@ -160,7 +207,12 @@ contract EVaultLiquidateListener is
             debtAmount: data.debtAmount,
             collateralAmountUsd: data.collateralAmountUsd,
             debtAmountUsd: data.debtAmountUsd,
-            liqLtv: data.liqLtv
+            eulerLiqLtv: data.eulerLiqLtv,
+            twyneLiqLtv: data.twyneLiqLtv,
+            creditReserved: data.creditReserved,
+            creditReservedUsd: data.creditReservedUsd,
+            twyneMaxLiqLtv: data.twyneMaxLiqLtv,
+            twyneSafetyBuffer: data.twyneSafetyBuffer
         }));
     }
 

@@ -19,4 +19,20 @@ interface IVaultManager {
         returns (
             uint256 length
         );
+    function maxTwyneLTVs(
+        address collateralAddress
+    )
+        external
+        view
+        returns (
+            uint256 maxTwyneLiqLTV
+        );
+    function externalLiqBuffers(
+        address collateralAddress
+    )
+        external
+        view
+        returns (
+            uint256 externalLiqBuffer
+        );
 }

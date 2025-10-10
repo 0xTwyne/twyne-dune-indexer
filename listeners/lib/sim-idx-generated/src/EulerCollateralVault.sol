@@ -127,7 +127,7 @@ struct EulerCollateralVault$TargetVaultFunctionOutputs {
 struct EulerCollateralVault$TeleportFunctionInputs {
     uint256 toDeposit;
     uint256 toBorrow;
-    address subAccount;
+    uint8 subAccountId;
 }
 
 struct EulerCollateralVault$TotalAssetsDepositedOrReservedFunctionOutputs {
@@ -962,6 +962,34 @@ abstract contract EulerCollateralVault$PreSetTwyneLiqLtvFunction {
     }
 }
 
+abstract contract EulerCollateralVault$OnSkimFunction {
+    function onSkimFunction(FunctionContext memory ctx) virtual external;
+
+    function triggerOnSkimFunction() view external returns (Trigger memory) {
+        return Trigger({
+            abiName: "EulerCollateralVault",
+            selector: bytes4(0x1dd19cb4),
+            triggerType: TriggerType.FUNCTION,
+            listenerCodehash: address(this).codehash,
+            handlerSelector: this.onSkimFunction.selector
+        });
+    }
+}
+
+abstract contract EulerCollateralVault$PreSkimFunction {
+    function preSkimFunction(PreFunctionContext memory ctx) virtual external;
+
+    function triggerPreSkimFunction() view external returns (Trigger memory) {
+        return Trigger({
+            abiName: "EulerCollateralVault",
+            selector: bytes4(0x1dd19cb4),
+            triggerType: TriggerType.PRE_FUNCTION,
+            listenerCodehash: address(this).codehash,
+            handlerSelector: this.preSkimFunction.selector
+        });
+    }
+}
+
 abstract contract EulerCollateralVault$OnSymbolFunction {
     function onSymbolFunction(FunctionContext memory ctx, EulerCollateralVault$SymbolFunctionOutputs memory outputs) virtual external;
 
@@ -1052,7 +1080,7 @@ abstract contract EulerCollateralVault$OnTeleportFunction {
     function triggerOnTeleportFunction() view external returns (Trigger memory) {
         return Trigger({
             abiName: "EulerCollateralVault",
-            selector: bytes4(0x5ba0d459),
+            selector: bytes4(0x81054573),
             triggerType: TriggerType.FUNCTION,
             listenerCodehash: address(this).codehash,
             handlerSelector: this.onTeleportFunction.selector
@@ -1066,7 +1094,7 @@ abstract contract EulerCollateralVault$PreTeleportFunction {
     function triggerPreTeleportFunction() view external returns (Trigger memory) {
         return Trigger({
             abiName: "EulerCollateralVault",
-            selector: bytes4(0x5ba0d459),
+            selector: bytes4(0x81054573),
             triggerType: TriggerType.PRE_FUNCTION,
             listenerCodehash: address(this).codehash,
             handlerSelector: this.preTeleportFunction.selector
