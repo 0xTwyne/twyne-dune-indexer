@@ -558,196 +558,31 @@ app.get("/api/collateralVaults/internal-liquidations", async (c) => {
       }
     }
 
-    // Get internal liquidations with complex join and grouping logic
-    // Inner join factorySetCollateralVaultLiquidated with positionSnapshot
-    // Filter for matching block numbers, group by vault_address, get first row per vault sorted by logIndex DESC
-    let baseQuery = sql`
-      WITH ranked_snapshots AS (
-        SELECT 
-          f.chain_id,
-          f.factory_address,
-          f.collateral_vault,
-          f.credit_vault,
-          p.underlying_collateral_vault,
-          f.debt_vault,
-          f.liquidator_address,
-          f.block_number,
-          f.block_timestamp,
-          f.txn_hash,
-          f.credit_reserved,
-          f.debt,
-          f.total_collateral,
-          f.user_owned_collateral,
-          f.twyne_liq_ltv,
-          f.credit_reserved_usd,
-          f.debt_usd,
-          f.total_collateral_usd,
-          f.user_owned_collateral_usd,
-          p.max_release,
-          p.max_release_usd,
-          p.max_repay,
-          p.max_repay_usd,
-          p.user_owned_collateral as p_user_owned_collateral,
-          p.user_owned_collateral_usd as p_user_owned_collateral_usd,
-          p.total_assets_deposited_or_reserved,
-          p.total_assets_deposited_or_reserved_usd,
-          ROW_NUMBER() OVER (PARTITION BY p.vault_address ORDER BY p.log_index DESC) as rn
-        FROM ${factorySetCollateralVaultLiquidated} f
-        INNER JOIN ${positionSnapshot} p 
-          ON f.collateral_vault = p.vault_address 
-          AND f.block_number = p.block_number
-      )
-      SELECT 
-        chain_id,
-        factory_address,
-        collateral_vault,
-        credit_vault,
-        underlying_collateral_vault,
-        debt_vault,
-        liquidator_address,
-        block_number,
-        block_timestamp,
-        txn_hash,
-        credit_reserved,
-        debt,
-        twyne_liq_ltv,
-        credit_reserved_usd,
-        debt_usd,
-        max_release as pre_max_release,
-        max_release_usd as pre_max_release_usd,
-        max_repay as pre_max_repay,
-        max_repay_usd as pre_max_repay_usd,
-        user_owned_collateral as pre_user_owned_collateral,
-        user_owned_collateral_usd as pre_user_owned_collateral_usd,
-        total_collateral as pre_total_collateral,
-        total_collateral_usd as pre_total_collateral_usd,
-        total_assets_deposited_or_reserved as total_collateral,
-        total_assets_deposited_or_reserved_usd
-      FROM ranked_snapshots
-      WHERE rn = 1
-    `;
+    // Query internal liquidations from factory_set_collateral_vault_liquidated table
+    const liquidations = await client
+      .select()
+      .from(factorySetCollateralVaultLiquidated)
+      .where(and(...conditions))
+      .orderBy(desc(factorySetCollateralVaultLiquidated.blockTimestamp))
+      .limit(limit)
+      .offset(offset);
 
-    // Apply additional filters if provided
-    if (conditions.length > 0) {
-      const whereConditions = [];
-      for (const condition of conditions) {
-        if (condition.toString().includes('chain_id')) {
-          whereConditions.push(condition.toString().replace('factory_set_collateral_vault_liquidated.chain_id', 'f.chain_id'));
-        } else if (condition.toString().includes('block_number')) {
-          whereConditions.push(condition.toString().replace('factory_set_collateral_vault_liquidated.block_number', 'block_number'));
-        } else if (condition.toString().includes('block_timestamp')) {
-          whereConditions.push(condition.toString().replace('factory_set_collateral_vault_liquidated.block_timestamp', 'block_timestamp'));
-        }
-      }
-      if (whereConditions.length > 0) {
-        baseQuery = sql`
-          WITH ranked_snapshots AS (
-            SELECT 
-              f.chain_id,
-              f.factory_address,
-              f.collateral_vault,
-              f.credit_vault,
-              p.underlying_collateral_vault,
-              f.debt_vault,
-              f.liquidator_address,
-              f.block_number,
-              f.block_timestamp,
-              f.txn_hash,
-              f.credit_reserved,
-              f.debt,
-              f.total_collateral,
-              f.user_owned_collateral,
-              f.twyne_liq_ltv,
-              f.credit_reserved_usd,
-              f.debt_usd,
-              f.total_collateral_usd,
-              f.user_owned_collateral_usd,
-              p.max_release,
-              p.max_release_usd,
-              p.max_repay,
-              p.max_repay_usd,
-              p.user_owned_collateral as p_user_owned_collateral,
-              p.user_owned_collateral_usd as p_user_owned_collateral_usd,
-              p.total_assets_deposited_or_reserved,
-              p.total_assets_deposited_or_reserved_usd,
-              ROW_NUMBER() OVER (PARTITION BY p.vault_address ORDER BY p.log_index DESC) as rn
-            FROM ${factorySetCollateralVaultLiquidated} f
-            INNER JOIN ${positionSnapshot} p 
-              ON f.collateral_vault = p.vault_address 
-              AND f.block_number = p.block_number
-            WHERE ${sql.raw(whereConditions.join(' AND '))}
-          )
-          SELECT 
-            chain_id,
-            factory_address,
-            collateral_vault,
-            credit_vault,
-            underlying_collateral_vault,
-            debt_vault,
-            liquidator_address,
-            block_number,
-            block_timestamp,
-            txn_hash,
-            credit_reserved,
-            debt,
-            twyne_liq_ltv,
-            credit_reserved_usd,
-            debt_usd,
-            max_release as pre_max_release,
-            max_release_usd as pre_max_release_usd,
-            max_repay as pre_max_repay,
-            max_repay_usd as pre_max_repay_usd,
-            user_owned_collateral as pre_user_owned_collateral,
-            user_owned_collateral_usd as pre_user_owned_collateral_usd,
-            total_collateral as pre_total_collateral,
-            total_collateral_usd as pre_total_collateral_usd,
-            total_assets_deposited_or_reserved as total_collateral,
-            total_assets_deposited_or_reserved_usd
-          FROM ranked_snapshots
-          WHERE rn = 1
-        `;
-      }
-    }
-
-    baseQuery = sql`${baseQuery} ORDER BY block_timestamp DESC LIMIT ${limit} OFFSET ${offset}`;
-
-    const liquidationsResult = await client.execute(baseQuery);
-
-    // Get total count with same complex join and filters
-    let countQuery = sql`
-      SELECT COUNT(DISTINCT f.collateral_vault) as count
-      FROM ${factorySetCollateralVaultLiquidated} f
-      INNER JOIN ${positionSnapshot} p 
-        ON f.collateral_vault = p.vault_address 
-        AND f.block_number = p.block_number
-    `;
-
-    if (conditions.length > 0) {
-      const whereConditions = [];
-      for (const condition of conditions) {
-        if (condition.toString().includes('chain_id')) {
-          whereConditions.push(condition.toString().replace('factory_set_collateral_vault_liquidated.chain_id', 'f.chain_id'));
-        } else if (condition.toString().includes('block_number')) {
-          whereConditions.push(condition.toString().replace('factory_set_collateral_vault_liquidated.block_number', 'f.block_number'));
-        } else if (condition.toString().includes('block_timestamp')) {
-          whereConditions.push(condition.toString().replace('factory_set_collateral_vault_liquidated.block_timestamp', 'f.block_timestamp'));
-        }
-      }
-      if (whereConditions.length > 0) {
-        countQuery = sql`${countQuery} WHERE ${sql.raw(whereConditions.join(' AND '))}`;
-      }
-    }
-
-    const totalCountResult = await client.execute(countQuery);
-    const totalCount = Number(totalCountResult.rows[0]?.count || 0);
+    // Get total count
+    const countResult = await client
+      .select({ count: sql<number>`count(*)` })
+      .from(factorySetCollateralVaultLiquidated)
+      .where(and(...conditions));
+    
+    const totalCount = Number(countResult[0]?.count || 0);
 
     return Response.json({
-      internalLiquidations: liquidationsResult.rows,
-      count: liquidationsResult.rows.length,
+      internalLiquidations: liquidations,
+      count: liquidations.length,
       totalCount,
       limit,
       offset,
       filters: {
+        chainIds: chainIds.map(id => id.toString()),
         startBlock,
         endBlock,
         startTimestamp,
