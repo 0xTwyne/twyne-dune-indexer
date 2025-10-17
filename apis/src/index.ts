@@ -766,7 +766,7 @@ app.get("/api/chainlink/latest-answers", async (c) => {
 app.get("/api/protocolStats", async (c) => {
   try {
     const client = db.client(c);
-    
+
     const chainIdsParam = c.req.query("chainIds");
     let chainIds: types.Uint[];
     if (!chainIdsParam) {
@@ -777,29 +777,66 @@ app.get("/api/protocolStats", async (c) => {
         .map((id) => new types.Uint(BigInt(parseInt(id, 10))));
     }
 
-    // Build the base subquery for latest snapshots (only "post" state to avoid double counting)
-    const baseSubquery = sql`
-      SELECT vault_address, MAX(block_timestamp) as max_timestamp
-      FROM ${positionSnapshot}
-      WHERE state = 'post'
-      GROUP BY vault_address
-    `;
-    
-    // Get the latest position snapshot for each vault address and calculate aggregated stats
-    const statsResult = await client
-      .select({
-        totalCollateralUsd: sql<string>`COALESCE(SUM(${positionSnapshot.userOwnedCollateralUsd}), 0)`,
-        totalDebtUsd: sql<string>`COALESCE(SUM(${positionSnapshot.maxRepayUsd}), 0)`,
-        uniqueVaults: sql<string>`COUNT(DISTINCT ${positionSnapshot.vaultAddress})`
-      })
-      .from(positionSnapshot)
-      .where(
-        and(
-          sql`(vault_address, block_timestamp) IN (${baseSubquery})`,
-          inArray(positionSnapshot.chainId, chainIds),
-          sql`state = 'post'`
+    // Convert chainIds to array of numeric string values for SQL
+    // Extract the underlying BigInt value and convert to string
+    const chainIdStrings = chainIds.map(id => id.value.toString());
+
+    // Calculate protocol stats with current prices from vaultMetrics using raw SQL
+    const statsQuery = sql.raw(`
+      WITH latest_vault_metrics AS (
+        SELECT
+          vault_address,
+          total_assets,
+          total_assets_usd,
+          total_borrows,
+          total_borrows_usd,
+          symbol,
+          CASE
+            WHEN total_assets > 0 THEN total_assets_usd::numeric / total_assets::numeric
+            ELSE 0
+          END as price_per_token
+        FROM vault_metrics
+        WHERE (vault_address, block_number) IN (
+          SELECT vault_address, MAX(block_number) as max_block_number
+          FROM vault_metrics
+          GROUP BY vault_address
         )
-      );
+          AND chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+      ),
+      latest_snapshots AS (
+        SELECT
+          ps.vault_address,
+          ps.credit_vault,
+          ps.debt_vault,
+          ps.user_owned_collateral,
+          ps.max_repay
+        FROM position_snapshot ps
+        WHERE (ps.vault_address, ps.block_timestamp) IN (
+          SELECT vault_address, MAX(block_timestamp) as max_timestamp
+          FROM position_snapshot
+          WHERE state = 'post'
+          GROUP BY vault_address
+        )
+          AND ps.state = 'post'
+          AND ps.chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+      )
+      SELECT
+        COALESCE(SUM(
+          ls.user_owned_collateral::numeric * COALESCE(credit_metrics.price_per_token, 0)
+        ), 0) as total_collateral_usd,
+        COALESCE(SUM(
+          ls.max_repay::numeric * COALESCE(debt_metrics.price_per_token, 0)
+        ), 0) as total_debt_usd,
+        COUNT(DISTINCT ls.vault_address) as unique_vaults
+      FROM latest_snapshots ls
+      LEFT JOIN latest_vault_metrics credit_metrics
+        ON ls.credit_vault = credit_metrics.vault_address
+      LEFT JOIN latest_vault_metrics debt_metrics
+        ON ls.debt_vault = debt_metrics.vault_address
+    `);
+
+    const statsResult = await client.execute(statsQuery);
+    const collateralStats = statsResult.rows[0];
 
     // Get the latest EVault metrics for vaults with symbols starting with "ee" (case sensitive)
     const evaultSubquery = sql`
@@ -822,27 +859,25 @@ app.get("/api/protocolStats", async (c) => {
         )
       );
 
-    // Extract the results from the first rows
-    const collateralStats = statsResult[0];
     const evaultStats = evaultStatsResult[0];
 
     // Convert string values to numbers and scale by 1e18 (except uniqueVaults)
     const scaleFactor = 1e18;
-    
+
     return Response.json({
-      totalCollateralUsd: Number(collateralStats.totalCollateralUsd) / scaleFactor,
-      totalDebtUsd: Number(collateralStats.totalDebtUsd) / scaleFactor,
+      totalCollateralUsd: Number(collateralStats.total_collateral_usd) / scaleFactor,
+      totalDebtUsd: Number(collateralStats.total_debt_usd) / scaleFactor,
       totalEvaultAssetsUsd: Number(evaultStats.totalEvaultAssetsUsd) / scaleFactor,
       totalEvaultBorrowsUsd: Number(evaultStats.totalEvaultBorrowsUsd) / scaleFactor,
-      uniqueVaults: Number(collateralStats.uniqueVaults), // No scaling for uniqueVaults
+      uniqueVaults: Number(collateralStats.unique_vaults), // No scaling for uniqueVaults
       timestamp: new Date().toISOString()
     });
   } catch (e) {
     console.error("Protocol stats query failed:", e);
     console.error("Cause:", (e as Error).cause);
-    return Response.json({ 
+    return Response.json({
       error: "Failed to fetch protocol statistics",
-      details: (e as Error).message 
+      details: (e as Error).message
     }, { status: 500 });
   }
 });
