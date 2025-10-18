@@ -130,6 +130,21 @@ async function runTests() {
   );
   console.log();
 
+  // Snapshot at Block
+  console.log('📍 Snapshot at Block Endpoints');
+  await testEndpoint('/api/collateralVaults/snapshot-at-block', 400, 'Missing blockNumber parameter', 400);
+  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=invalid', 400, 'Invalid blockNumber format', 400);
+  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=-1', 400, 'Negative blockNumber', 400);
+  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=23000000', 200, 'Snapshot at specific block (historical)');
+  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=23590163', 200, 'Snapshot at recent block');
+  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=23590163&chainIds=1', 200, 'Snapshot at block with chain filter');
+  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=23590163&includeRawAmounts=false', 200, 'Snapshot without raw amounts');
+  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=23590163&includePricedAmounts=false', 200, 'Snapshot without priced amounts');
+  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=23590163&includeRawAmounts=true&includePricedAmounts=true', 200, 'Snapshot with both amounts');
+  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=1000000', 200, 'Snapshot at early block (may be empty)');
+  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=99999999', 200, 'Snapshot at future block (should be empty)');
+  console.log();
+
   // External Liquidations
   console.log('📍 External Liquidations Endpoints');
   await testEndpoint('/api/collateralVaults/external-liquidations', 200, 'Get external liquidations');

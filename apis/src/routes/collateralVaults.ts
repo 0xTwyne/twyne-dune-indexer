@@ -441,4 +441,239 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
       return serverError(e as Error, "Failed to fetch internal liquidations");
     }
   });
+
+  // Get snapshot of all collateral vaults at a specific block
+  app.get("/api/collateralVaults/snapshot-at-block", async (c) => {
+    try {
+      const client = db.client(c);
+      const chainIds = parseChainIds(c.req.query("chainIds"));
+
+      // Validate required block number parameter
+      const blockNumberParam = c.req.query("blockNumber");
+      if (!blockNumberParam) {
+        return errorResponse("blockNumber query parameter is required");
+      }
+
+      const blockValidation = validateBlockNumber(blockNumberParam);
+      if (!blockValidation.success) {
+        return errorResponse(blockValidation.error!);
+      }
+      const targetBlock = blockValidation.value!;
+
+      // Parse optional flags
+      const includeRawAmounts = c.req.query("includeRawAmounts") !== "false";
+      const includePricedAmounts = c.req.query("includePricedAmounts") !== "false";
+
+      // Convert chainIds to array of numeric string values for SQL
+      const chainIdStrings = chainIds.map(id => id.value.toString());
+
+      // Step 1: Fetch latest position snapshots up to the target block (only "post" state)
+      const snapshotsQuery = sql.raw(`
+        WITH latest_snapshots AS (
+          SELECT
+            ps.vault_address,
+            ps.underlying_collateral_vault,
+            ps.credit_vault,
+            ps.debt_vault,
+            ps.user_owned_collateral,
+            ps.max_release,
+            ps.max_repay,
+            ps.total_assets_deposited_or_reserved,
+            ps.can_liquidate,
+            ps.is_externally_liquidated,
+            ps.twyne_liq_ltv,
+            ps.block_number,
+            ps.block_timestamp,
+            ps.log_index
+          FROM position_snapshot ps
+          WHERE (ps.vault_address, ps.block_timestamp) IN (
+            SELECT vault_address, MAX(block_timestamp) as max_timestamp
+            FROM position_snapshot
+            WHERE state = 'post'
+              AND block_number <= ${targetBlock.value.toString()}
+              AND chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+            GROUP BY vault_address
+          )
+            AND ps.state = 'post'
+            AND ps.block_number <= ${targetBlock.value.toString()}
+            AND ps.chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+        )
+        SELECT * FROM latest_snapshots
+        ORDER BY block_timestamp DESC, log_index DESC
+      `);
+
+      const snapshotsResult = await client.execute(snapshotsQuery);
+      const snapshots = snapshotsResult.rows;
+
+      if (snapshots.length === 0) {
+        return Response.json({
+          blockNumber: targetBlock.toString(),
+          snapshotBlock: null,
+          priceBlock: null,
+          snapshots: [],
+          vaultPrices: {},
+          aggregates: {
+            totalUserOwnedCollateralUsd: 0,
+            totalMaxReleaseUsd: 0,
+            totalMaxRepayUsd: 0,
+            totalAssetsDepositedOrReservedUsd: 0,
+            uniqueVaults: 0
+          },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Step 2: Extract unique vault addresses
+      const vaultAddresses = new Set<string>();
+      snapshots.forEach((snapshot: any) => {
+        if (snapshot.underlying_collateral_vault) {
+          vaultAddresses.add('0x' + Buffer.from(snapshot.underlying_collateral_vault).toString('hex'));
+        }
+        if (snapshot.credit_vault) {
+          vaultAddresses.add('0x' + Buffer.from(snapshot.credit_vault).toString('hex'));
+        }
+        if (snapshot.debt_vault) {
+          vaultAddresses.add('0x' + Buffer.from(snapshot.debt_vault).toString('hex'));
+        }
+      });
+
+      // Step 3: Fetch EVault metrics at closest block <= targetBlock
+      const vaultPricesQuery = sql.raw(`
+        WITH latest_metrics AS (
+          SELECT
+            vault_address,
+            total_assets,
+            total_assets_usd,
+            symbol,
+            block_number,
+            CASE
+              WHEN total_assets > 0 THEN total_assets_usd::numeric / total_assets::numeric
+              ELSE 0
+            END as price_per_token
+          FROM vault_metrics
+          WHERE (vault_address, block_number) IN (
+            SELECT vault_address, MAX(block_number) as max_block_number
+            FROM vault_metrics
+            WHERE block_number <= ${targetBlock.value.toString()}
+              AND chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+            GROUP BY vault_address
+          )
+            AND block_number <= ${targetBlock.value.toString()}
+            AND chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+        )
+        SELECT
+          vault_address,
+          price_per_token,
+          symbol,
+          block_number
+        FROM latest_metrics
+      `);
+
+      const vaultPricesResult = await client.execute(vaultPricesQuery);
+      const vaultPricesMap: Record<string, any> = {};
+
+      vaultPricesResult.rows.forEach((row: any) => {
+        const address = '0x' + Buffer.from(row.vault_address).toString('hex');
+        vaultPricesMap[address] = {
+          pricePerToken: parseFloat(row.price_per_token) || 0,
+          symbol: row.symbol,
+          blockNumber: row.block_number.toString()
+        };
+      });
+
+      // Step 4: Calculate USD values and format snapshots
+      const scaleFactor = 1e18;
+      let totalUserOwnedCollateralUsd = 0;
+      let totalMaxReleaseUsd = 0;
+      let totalMaxRepayUsd = 0;
+      let totalAssetsDepositedOrReservedUsd = 0;
+
+      const formattedSnapshots = snapshots.map((snapshot: any) => {
+        const vaultAddress = '0x' + Buffer.from(snapshot.vault_address).toString('hex');
+        const underlyingCollateralVault = '0x' + Buffer.from(snapshot.underlying_collateral_vault).toString('hex');
+        const creditVault = '0x' + Buffer.from(snapshot.credit_vault).toString('hex');
+        const debtVault = '0x' + Buffer.from(snapshot.debt_vault).toString('hex');
+
+        const userOwnedCollateral = BigInt(snapshot.user_owned_collateral);
+        const maxRelease = BigInt(snapshot.max_release);
+        const maxRepay = BigInt(snapshot.max_repay);
+        const totalAssetsDepositedOrReserved = BigInt(snapshot.total_assets_deposited_or_reserved);
+
+        // Get prices from vault metrics
+        const underlyingPrice = vaultPricesMap[underlyingCollateralVault]?.pricePerToken || 0;
+        const creditPrice = vaultPricesMap[creditVault]?.pricePerToken || 0;
+        const debtPrice = vaultPricesMap[debtVault]?.pricePerToken || 0;
+
+        // Calculate USD values
+        const userOwnedCollateralUsd = (Number(userOwnedCollateral) / scaleFactor) * underlyingPrice;
+        const maxReleaseUsd = (Number(maxRelease) / scaleFactor) * creditPrice;
+        const maxRepayUsd = (Number(maxRepay) / scaleFactor) * debtPrice;
+        const assetsDepositedOrReservedUsd = (Number(totalAssetsDepositedOrReserved) / scaleFactor) * underlyingPrice;
+
+        // Aggregate totals
+        totalUserOwnedCollateralUsd += userOwnedCollateralUsd;
+        totalMaxReleaseUsd += maxReleaseUsd;
+        totalMaxRepayUsd += maxRepayUsd;
+        totalAssetsDepositedOrReservedUsd += assetsDepositedOrReservedUsd;
+
+        const result: any = {
+          vaultAddress,
+          underlyingCollateralVault,
+          creditVault,
+          debtVault,
+          canLiquidate: snapshot.can_liquidate,
+          isExternallyLiquidated: snapshot.is_externally_liquidated,
+          twyneLiqLtv: snapshot.twyne_liq_ltv.toString(),
+          blockNumber: snapshot.block_number.toString(),
+          blockTimestamp: snapshot.block_timestamp.toString(),
+          logIndex: snapshot.log_index.toString()
+        };
+
+        if (includeRawAmounts) {
+          result.userOwnedCollateral = userOwnedCollateral.toString();
+          result.maxRelease = maxRelease.toString();
+          result.maxRepay = maxRepay.toString();
+          result.totalAssetsDepositedOrReserved = totalAssetsDepositedOrReserved.toString();
+        }
+
+        if (includePricedAmounts) {
+          result.userOwnedCollateralUsd = userOwnedCollateralUsd;
+          result.maxReleaseUsd = maxReleaseUsd;
+          result.maxRepayUsd = maxRepayUsd;
+          result.totalAssetsDepositedOrReservedUsd = assetsDepositedOrReservedUsd;
+        }
+
+        return result;
+      });
+
+      // Get actual snapshot block (max block from results)
+      const snapshotBlock = snapshots.length > 0
+        ? Math.max(...snapshots.map((s: any) => parseInt(s.block_number)))
+        : null;
+
+      // Get price block (max block from vault prices)
+      const priceBlock = vaultPricesResult.rows.length > 0
+        ? Math.max(...vaultPricesResult.rows.map((r: any) => parseInt(r.block_number)))
+        : null;
+
+      return Response.json({
+        blockNumber: targetBlock.toString(),
+        snapshotBlock: snapshotBlock?.toString() || null,
+        priceBlock: priceBlock?.toString() || null,
+        snapshots: formattedSnapshots,
+        vaultPrices: vaultPricesMap,
+        aggregates: {
+          totalUserOwnedCollateralUsd,
+          totalMaxReleaseUsd,
+          totalMaxRepayUsd,
+          totalAssetsDepositedOrReservedUsd,
+          uniqueVaults: snapshots.length
+        },
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (e) {
+      return serverError(e as Error, "Failed to fetch snapshot at block");
+    }
+  });
 }
