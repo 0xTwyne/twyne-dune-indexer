@@ -82,135 +82,6 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
     }
   });
 
-  // Get latest position snapshot for each vault address
-  app.get("/api/collateralVaults/latest-snapshots", async (c) => {
-    try {
-      const client = db.client(c);
-      const chainIds = parseChainIds(c.req.query("chainIds"));
-
-      // Validate pagination
-      const paginationValidation = validatePagination(c.req.query("limit"), c.req.query("offset"));
-      if (!paginationValidation.success) {
-        return errorResponse(paginationValidation.error!);
-      }
-      const { limit, offset } = paginationValidation.value!;
-
-      const canLiquidateFilter = c.req.query("canLiquidate");
-      const isExternallyLiquidatedFilter = c.req.query("isExternallyLiquidated");
-
-      console.log("chainIds", chainIds);
-
-      // Build additional filter conditions
-      const additionalConditions = [];
-
-      if (canLiquidateFilter !== undefined) {
-        const canLiquidateValue = canLiquidateFilter.toLowerCase() === 'true';
-        additionalConditions.push(sql`can_liquidate = ${canLiquidateValue}`);
-      }
-
-      if (isExternallyLiquidatedFilter !== undefined) {
-        const isExternallyLiquidatedValue = isExternallyLiquidatedFilter.toLowerCase() === 'true';
-        additionalConditions.push(sql`is_externally_liquidated = ${isExternallyLiquidatedValue}`);
-      }
-
-      // Build the base subquery for latest snapshots (only "post" state to avoid double counting)
-      let baseSubquery = sql`
-        SELECT vault_address, MAX(block_timestamp) as max_timestamp
-        FROM ${positionSnapshot}
-        WHERE state = 'post'
-      `;
-
-      // Add additional filters to subquery if needed
-      if (additionalConditions.length > 0) {
-        baseSubquery = sql`${baseSubquery} AND ${sql.join(additionalConditions, sql` AND `)}`;
-      }
-
-      baseSubquery = sql`${baseSubquery} GROUP BY vault_address`;
-
-      // Get the latest position snapshot for each vault address
-      const latestSnapshots = await client
-        .select()
-        .from(positionSnapshot)
-        .where(
-          and(
-            sql`(vault_address, block_timestamp) IN (${baseSubquery})`,
-            inArray(positionSnapshot.chainId, chainIds),
-            sql`state = 'post'`
-          )
-        )
-        .orderBy(desc(positionSnapshot.blockTimestamp), desc(positionSnapshot.logIndex))
-        .limit(limit)
-        .offset(offset);
-
-      // Get total count of unique vault addresses with snapshots (applying same filters including "post" state)
-      let countQuery = sql`SELECT COUNT(DISTINCT vault_address) as count FROM ${positionSnapshot} WHERE state = 'post'`;
-      if (additionalConditions.length > 0) {
-        countQuery = sql`${countQuery} AND ${sql.join(additionalConditions, sql` AND `)}`;
-      }
-
-      const totalUniqueVaultsResult = await client.execute(countQuery);
-      const totalUniqueVaults = Number(totalUniqueVaultsResult.rows[0]?.count || 0);
-
-      return Response.json({
-        latestSnapshots,
-        count: latestSnapshots.length,
-        totalUniqueVaults,
-        limit,
-        offset,
-        filters: {
-          canLiquidate: canLiquidateFilter,
-          isExternallyLiquidated: isExternallyLiquidatedFilter
-        },
-        timestamp: new Date().toISOString()
-      });
-    } catch (e) {
-      return serverError(e as Error, "Failed to fetch latest position snapshots");
-    }
-  });
-
-  // Get latest position snapshot for a specific vault address
-  app.get("/api/collateralVaults/:address/latest-snapshot", async (c) => {
-    try {
-      const client = db.client(c);
-      const vaultAddressParam = c.req.param("address");
-
-      // Validate vault address parameter
-      const addressValidation = validateAddress(vaultAddressParam);
-      if (!addressValidation.success) {
-        return errorResponse(addressValidation.error!);
-      }
-      const vaultAddress = addressValidation.value!;
-
-      // Get the latest snapshot for this specific vault (only "post" state to avoid double counting)
-      const latestSnapshot = await client
-        .select()
-        .from(positionSnapshot)
-        .where(
-          and(
-            eq(positionSnapshot.vaultAddress, vaultAddress),
-            sql`state = 'post'`
-          )
-        )
-        .orderBy(desc(positionSnapshot.blockTimestamp))
-        .limit(1);
-
-      if (latestSnapshot.length === 0) {
-        return Response.json(
-          { error: "No position snapshots found for this vault address" },
-          { status: 404 }
-        );
-      }
-
-      return Response.json({
-        vaultAddress: vaultAddressParam,
-        latestSnapshot: latestSnapshot[0],
-        timestamp: new Date().toISOString()
-      });
-    } catch (e) {
-      return serverError(e as Error, "Failed to fetch latest position snapshot");
-    }
-  });
-
   // Get position snapshot history for a specific vault address
   app.get("/api/collateralVaults/:address/history", async (c) => {
     try {
@@ -442,32 +313,115 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
     }
   });
 
-  // Get snapshot of all collateral vaults at a specific block
-  app.get("/api/collateralVaults/snapshot-at-block", async (c) => {
+  // Get snapshot of all collateral vaults at a specific block (or latest if not provided)
+  app.get("/api/collateralVaults/snapshots", async (c) => {
     try {
       const client = db.client(c);
       const chainIds = parseChainIds(c.req.query("chainIds"));
 
-      // Validate required block number parameter
-      const blockNumberParam = c.req.query("blockNumber");
-      if (!blockNumberParam) {
-        return errorResponse("blockNumber query parameter is required");
+      // Validate pagination
+      const paginationValidation = validatePagination(c.req.query("limit"), c.req.query("offset"));
+      if (!paginationValidation.success) {
+        return errorResponse(paginationValidation.error!);
       }
+      const { limit, offset } = paginationValidation.value!;
 
-      const blockValidation = validateBlockNumber(blockNumberParam);
-      if (!blockValidation.success) {
-        return errorResponse(blockValidation.error!);
+      // Parse optional block number parameter
+      const blockNumberParam = c.req.query("blockNumber");
+      let targetBlock: types.Uint;
+
+      if (blockNumberParam) {
+        // Use provided block number
+        const blockValidation = validateBlockNumber(blockNumberParam);
+        if (!blockValidation.success) {
+          return errorResponse(blockValidation.error!);
+        }
+        targetBlock = blockValidation.value!;
+      } else {
+        // Fetch the max block number from vault_metrics table
+        const chainIdStrings = chainIds.map(id => id.value.toString());
+        const maxBlockQuery = sql.raw(`
+          SELECT MAX(block_number) as max_block
+          FROM vault_metrics
+          WHERE chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+        `);
+
+        const maxBlockResult = await client.execute(maxBlockQuery);
+        const maxBlock = maxBlockResult.rows[0]?.max_block as string | number | undefined;
+
+        if (!maxBlock) {
+          return Response.json({
+            blockNumber: null,
+            snapshotBlock: null,
+            priceBlock: null,
+            snapshots: [],
+            vaultPrices: {},
+            aggregates: {
+              totalUserOwnedCollateralUsd: 0,
+              totalMaxReleaseUsd: 0,
+              totalMaxRepayUsd: 0,
+              totalAssetsDepositedOrReservedUsd: 0,
+              uniqueVaults: 0
+            },
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        targetBlock = new Uint(BigInt(maxBlock));
       }
-      const targetBlock = blockValidation.value!;
 
       // Parse optional flags
       const includeRawAmounts = c.req.query("includeRawAmounts") !== "false";
       const includePricedAmounts = c.req.query("includePricedAmounts") !== "false";
 
+      // Parse optional filters
+      const canLiquidateFilter = c.req.query("canLiquidate");
+      const isExternallyLiquidatedFilter = c.req.query("isExternallyLiquidated");
+      const vaultAddressesParam = c.req.query("vaultAddresses");
+
+      // Parse and validate vault addresses if provided
+      let vaultAddresses: types.Address[] = [];
+      if (vaultAddressesParam) {
+        const addressStrings = vaultAddressesParam.split(',').map(addr => addr.trim()).filter(addr => addr.length > 0);
+
+        for (const addressStr of addressStrings) {
+          const validation = validateAddress(addressStr);
+          if (!validation.success) {
+            return errorResponse(`Invalid vault address '${addressStr}': ${validation.error}`);
+          }
+          vaultAddresses.push(validation.value!);
+        }
+      }
+
       // Convert chainIds to array of numeric string values for SQL
       const chainIdStrings = chainIds.map(id => id.value.toString());
 
+      // Build additional filter conditions
+      const additionalConditions = [];
+
+      if (canLiquidateFilter !== undefined) {
+        const canLiquidateValue = canLiquidateFilter.toLowerCase() === 'true';
+        additionalConditions.push(`can_liquidate = ${canLiquidateValue}`);
+      }
+
+      if (isExternallyLiquidatedFilter !== undefined) {
+        const isExternallyLiquidatedValue = isExternallyLiquidatedFilter.toLowerCase() === 'true';
+        additionalConditions.push(`is_externally_liquidated = ${isExternallyLiquidatedValue}`);
+      }
+
+      // Add vault address filter if specified
+      if (vaultAddresses.length > 0) {
+        const vaultAddressHexStrings = vaultAddresses.map(addr =>
+          `'\\x${Buffer.from(addr.address).toString('hex')}'`
+        ).join(',');
+        additionalConditions.push(`vault_address IN (${vaultAddressHexStrings})`);
+      }
+
       // Step 1: Fetch latest position snapshots up to the target block (only "post" state)
+      const additionalWhereClause = additionalConditions.length > 0
+        ? `AND ${additionalConditions.join(' AND ')}`
+        : '';
+
       const snapshotsQuery = sql.raw(`
         WITH latest_snapshots AS (
           SELECT
@@ -492,18 +446,38 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
             WHERE state = 'post'
               AND block_number <= ${targetBlock.value.toString()}
               AND chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+              ${additionalWhereClause}
             GROUP BY vault_address
           )
             AND ps.state = 'post'
             AND ps.block_number <= ${targetBlock.value.toString()}
             AND ps.chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+            ${additionalWhereClause}
         )
         SELECT * FROM latest_snapshots
         ORDER BY block_timestamp DESC, log_index DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
       `);
 
       const snapshotsResult = await client.execute(snapshotsQuery);
       const snapshots = snapshotsResult.rows;
+
+      // Get total count of unique vault addresses with snapshots
+      const countQueryAdditionalWhere = additionalConditions.length > 0
+        ? `AND ${additionalConditions.join(' AND ')}`
+        : '';
+      const countQuery = sql.raw(`
+        SELECT COUNT(DISTINCT vault_address) as count
+        FROM position_snapshot
+        WHERE state = 'post'
+          AND block_number <= ${targetBlock.value.toString()}
+          AND chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+          ${countQueryAdditionalWhere}
+      `);
+
+      const totalUniqueVaultsResult = await client.execute(countQuery);
+      const totalUniqueVaults = Number(totalUniqueVaultsResult.rows[0]?.count || 0);
 
       if (snapshots.length === 0) {
         return Response.json({
@@ -519,21 +493,28 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
             totalAssetsDepositedOrReservedUsd: 0,
             uniqueVaults: 0
           },
+          totalUniqueVaults,
+          limit,
+          offset,
+          filters: {
+            canLiquidate: canLiquidateFilter,
+            isExternallyLiquidated: isExternallyLiquidatedFilter
+          },
           timestamp: new Date().toISOString()
         });
       }
 
-      // Step 2: Extract unique vault addresses
-      const vaultAddresses = new Set<string>();
+      // Step 2: Extract unique vault addresses from snapshots for pricing
+      const vaultAddressesForPricing = new Set<string>();
       snapshots.forEach((snapshot: any) => {
         if (snapshot.underlying_collateral_vault) {
-          vaultAddresses.add('0x' + Buffer.from(snapshot.underlying_collateral_vault).toString('hex'));
+          vaultAddressesForPricing.add('0x' + Buffer.from(snapshot.underlying_collateral_vault).toString('hex'));
         }
         if (snapshot.credit_vault) {
-          vaultAddresses.add('0x' + Buffer.from(snapshot.credit_vault).toString('hex'));
+          vaultAddressesForPricing.add('0x' + Buffer.from(snapshot.credit_vault).toString('hex'));
         }
         if (snapshot.debt_vault) {
-          vaultAddresses.add('0x' + Buffer.from(snapshot.debt_vault).toString('hex'));
+          vaultAddressesForPricing.add('0x' + Buffer.from(snapshot.debt_vault).toString('hex'));
         }
       });
 
@@ -668,6 +649,14 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
           totalMaxRepayUsd,
           totalAssetsDepositedOrReservedUsd,
           uniqueVaults: snapshots.length
+        },
+        totalUniqueVaults,
+        limit,
+        offset,
+        filters: {
+          canLiquidate: canLiquidateFilter,
+          isExternallyLiquidated: isExternallyLiquidatedFilter,
+          vaultAddresses: vaultAddressesParam
         },
         timestamp: new Date().toISOString()
       });

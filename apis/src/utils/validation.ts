@@ -128,16 +128,17 @@ export function validateBlockNumber(blockParam: string): ValidationResult<types.
  * @returns Validation result with Uint timestamp or error message
  */
 export function validateTimestamp(timestampParam: string): ValidationResult<types.Uint> {
-  try {
-    const timestamp = new Uint(BigInt(timestampParam));
-    return {
-      success: true,
-      value: timestamp
-    };
-  } catch (e) {
+  const timestampValue = parseInt(timestampParam, 10);
+
+  if (isNaN(timestampValue) || timestampValue < 0) {
     return {
       success: false,
-      error: "Invalid timestamp parameter. Must be a valid number."
+      error: "Invalid timestamp parameter"
     };
   }
+
+  return {
+    success: true,
+    value: new Uint(BigInt(timestampValue))
+  };
 }

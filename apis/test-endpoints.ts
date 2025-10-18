@@ -84,17 +84,17 @@ async function runTests() {
   await testEndpoint('/api/collateralVaults?limit=invalid', 400, 'Collateral vaults with invalid limit', 400);
   console.log();
 
-  // Latest Snapshots
-  console.log('📍 Latest Snapshots Endpoints');
-  await testEndpoint('/api/collateralVaults/latest-snapshots', 200, 'Get latest snapshots');
-  await testEndpoint('/api/collateralVaults/latest-snapshots?limit=5', 200, 'Latest snapshots with limit');
-  await testEndpoint('/api/collateralVaults/latest-snapshots?canLiquidate=true', 200, 'Latest snapshots - can liquidate');
-  await testEndpoint('/api/collateralVaults/latest-snapshots?canLiquidate=false', 200, 'Latest snapshots - cannot liquidate');
-  await testEndpoint('/api/collateralVaults/latest-snapshots?isExternallyLiquidated=true', 200, 'Latest snapshots - externally liquidated');
-  await testEndpoint('/api/collateralVaults/latest-snapshots?isExternallyLiquidated=false', 200, 'Latest snapshots - not externally liquidated');
-  await testEndpoint('/api/collateralVaults/latest-snapshots?chainIds=1', 200, 'Latest snapshots with chain filter');
-  await testEndpoint('/api/collateralVaults/latest-snapshots?limit=-1', 400, 'Latest snapshots with invalid limit', 400);
-  await testEndpoint('/api/collateralVaults/latest-snapshots?offset=-1', 400, 'Latest snapshots with invalid offset', 400);
+  // Snapshot at Block (replaces Latest Snapshots - blockNumber is now optional)
+  console.log('📍 Snapshot at Block Endpoints');
+  await testEndpoint('/api/collateralVaults/snapshots', 200, 'Snapshot at latest block (no blockNumber)');
+  await testEndpoint('/api/collateralVaults/snapshots?limit=5', 200, 'Latest snapshot with limit');
+  await testEndpoint('/api/collateralVaults/snapshots?canLiquidate=true', 200, 'Latest snapshot - can liquidate');
+  await testEndpoint('/api/collateralVaults/snapshots?canLiquidate=false', 200, 'Latest snapshot - cannot liquidate');
+  await testEndpoint('/api/collateralVaults/snapshots?isExternallyLiquidated=true', 200, 'Latest snapshot - externally liquidated');
+  await testEndpoint('/api/collateralVaults/snapshots?isExternallyLiquidated=false', 200, 'Latest snapshot - not externally liquidated');
+  await testEndpoint('/api/collateralVaults/snapshots?chainIds=1', 200, 'Latest snapshot with chain filter');
+  await testEndpoint('/api/collateralVaults/snapshots?limit=-1', 400, 'Latest snapshot with invalid limit', 400);
+  await testEndpoint('/api/collateralVaults/snapshots?offset=-1', 400, 'Latest snapshot with invalid offset', 400);
   console.log();
 
   // Specific Vault Snapshot (will need a valid address from the database)
@@ -130,19 +130,21 @@ async function runTests() {
   );
   console.log();
 
-  // Snapshot at Block
-  console.log('📍 Snapshot at Block Endpoints');
-  await testEndpoint('/api/collateralVaults/snapshot-at-block', 400, 'Missing blockNumber parameter', 400);
-  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=invalid', 400, 'Invalid blockNumber format', 400);
-  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=-1', 400, 'Negative blockNumber', 400);
-  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=23000000', 200, 'Snapshot at specific block (historical)');
-  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=23590163', 200, 'Snapshot at recent block');
-  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=23590163&chainIds=1', 200, 'Snapshot at block with chain filter');
-  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=23590163&includeRawAmounts=false', 200, 'Snapshot without raw amounts');
-  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=23590163&includePricedAmounts=false', 200, 'Snapshot without priced amounts');
-  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=23590163&includeRawAmounts=true&includePricedAmounts=true', 200, 'Snapshot with both amounts');
-  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=1000000', 200, 'Snapshot at early block (may be empty)');
-  await testEndpoint('/api/collateralVaults/snapshot-at-block?blockNumber=99999999', 200, 'Snapshot at future block (should be empty)');
+  // Snapshot at Block with specific block numbers
+  console.log('📍 Historical Snapshot at Block Tests');
+  await testEndpoint('/api/collateralVaults/snapshots?blockNumber=invalid', 400, 'Invalid blockNumber format', 400);
+  await testEndpoint('/api/collateralVaults/snapshots?blockNumber=-1', 400, 'Negative blockNumber', 400);
+  await testEndpoint('/api/collateralVaults/snapshots?blockNumber=23000000', 200, 'Snapshot at specific block (historical)');
+  await testEndpoint('/api/collateralVaults/snapshots?blockNumber=23590163', 200, 'Snapshot at recent block');
+  await testEndpoint('/api/collateralVaults/snapshots?blockNumber=23590163&chainIds=1', 200, 'Snapshot at block with chain filter');
+  await testEndpoint('/api/collateralVaults/snapshots?blockNumber=23590163&includeRawAmounts=false', 200, 'Snapshot without raw amounts');
+  await testEndpoint('/api/collateralVaults/snapshots?blockNumber=23590163&includePricedAmounts=false', 200, 'Snapshot without priced amounts');
+  await testEndpoint('/api/collateralVaults/snapshots?blockNumber=23590163&includeRawAmounts=true&includePricedAmounts=true', 200, 'Snapshot with both amounts');
+  await testEndpoint('/api/collateralVaults/snapshots?blockNumber=23590163&limit=10&offset=0', 200, 'Snapshot at block with pagination');
+  await testEndpoint('/api/collateralVaults/snapshots?blockNumber=23590163&canLiquidate=true', 200, 'Snapshot at block - can liquidate');
+  await testEndpoint('/api/collateralVaults/snapshots?blockNumber=23590163&isExternallyLiquidated=true', 200, 'Snapshot at block - externally liquidated');
+  await testEndpoint('/api/collateralVaults/snapshots?blockNumber=1000000', 200, 'Snapshot at early block (may be empty)');
+  await testEndpoint('/api/collateralVaults/snapshots?blockNumber=99999999', 200, 'Snapshot at future block (should be empty)');
   console.log();
 
   // External Liquidations
@@ -173,10 +175,25 @@ async function runTests() {
   await testEndpoint('/api/evault/0x0000000000000000000000000000000000000001/metrics?startBlock=1000000', 200, 'EVault metrics with block filter');
   console.log();
 
-  // Latest EVault Metrics
+  // Latest EVault Metrics (with optional blockNumber/timestamp)
   console.log('📍 Latest EVault Metrics');
-  await testEndpoint('/api/evaults/latest', 200, 'Get latest EVault metrics');
+  await testEndpoint('/api/evaults/latest', 200, 'Get latest EVault metrics (no parameters)');
   await testEndpoint('/api/evaults/latest?chainIds=1', 200, 'Latest EVault metrics with chain filter');
+  await testEndpoint('/api/evaults/latest?limit=10', 200, 'Latest EVault metrics with limit');
+  await testEndpoint('/api/evaults/latest?limit=10&offset=5', 200, 'Latest EVault metrics with pagination');
+  await testEndpoint('/api/evaults/latest?limit=-1', 400, 'Latest EVault metrics with invalid limit', 400);
+  await testEndpoint('/api/evaults/latest?offset=-1', 400, 'Latest EVault metrics with invalid offset', 400);
+  await testEndpoint('/api/evaults/latest?blockNumber=23000000', 200, 'EVault metrics at specific block');
+  await testEndpoint('/api/evaults/latest?blockNumber=23590163', 200, 'EVault metrics at recent block');
+  await testEndpoint('/api/evaults/latest?blockNumber=23590163&chainIds=1', 200, 'EVault metrics at block with chain filter');
+  await testEndpoint('/api/evaults/latest?blockNumber=invalid', 400, 'EVault metrics with invalid blockNumber', 400);
+  await testEndpoint('/api/evaults/latest?blockNumber=-1', 400, 'EVault metrics with negative blockNumber', 400);
+  await testEndpoint('/api/evaults/latest?timestamp=1758000000', 200, 'EVault metrics at specific timestamp');
+  await testEndpoint('/api/evaults/latest?timestamp=1760000000', 200, 'EVault metrics at recent timestamp');
+  await testEndpoint('/api/evaults/latest?timestamp=1760000000&chainIds=1', 200, 'EVault metrics at timestamp with chain filter');
+  await testEndpoint('/api/evaults/latest?timestamp=invalid', 400, 'EVault metrics with invalid timestamp', 400);
+  await testEndpoint('/api/evaults/latest?timestamp=-1', 400, 'EVault metrics with negative timestamp', 400);
+  await testEndpoint('/api/evaults/latest?blockNumber=23590163&timestamp=1760000000', 200, 'EVault metrics with both block and timestamp (block prioritized)');
   console.log();
 
   // Chainlink
