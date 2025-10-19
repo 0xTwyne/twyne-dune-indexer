@@ -85,6 +85,21 @@ export async function runCollateralVaultsTests() {
   await testEndpoint('/api/collateralVaults/snapshots?blockNumber=99999999', 200, 'Snapshot at future block (should be empty)');
   console.log();
 
+  // Snapshot at Timestamp Tests
+  console.log('📍 Historical Snapshot at Timestamp Tests');
+  await testEndpoint('/api/collateralVaults/snapshots?timestamp=invalid', 400, 'Invalid timestamp format', 400);
+  await testEndpoint('/api/collateralVaults/snapshots?timestamp=-1', 400, 'Negative timestamp', 400);
+  await testEndpoint('/api/collateralVaults/snapshots?timestamp=1700000000', 200, 'Snapshot at specific timestamp (historical)');
+  await testEndpoint('/api/collateralVaults/snapshots?timestamp=1760616947', 200, 'Snapshot at recent timestamp');
+  await testEndpoint('/api/collateralVaults/snapshots?timestamp=1760616947&chainIds=1', 200, 'Snapshot at timestamp with chain filter');
+  await testEndpoint('/api/collateralVaults/snapshots?timestamp=1760616947&limit=10&offset=0', 200, 'Snapshot at timestamp with pagination');
+  await testEndpoint('/api/collateralVaults/snapshots?timestamp=1760616947&canLiquidate=true', 200, 'Snapshot at timestamp - can liquidate');
+  await testEndpoint('/api/collateralVaults/snapshots?timestamp=1760616947&isExternallyLiquidated=true', 200, 'Snapshot at timestamp - externally liquidated');
+  await testEndpoint('/api/collateralVaults/snapshots?timestamp=1759327101', 200, 'Snapshot at earliest available timestamp');
+  await testEndpoint('/api/collateralVaults/snapshots?timestamp=9999999999', 200, 'Snapshot at future timestamp (should be empty)');
+  await testEndpoint('/api/collateralVaults/snapshots?blockNumber=23590163&timestamp=1760616947', 200, 'BlockNumber takes precedence over timestamp');
+  console.log();
+
   // External Liquidations
   console.log('📍 External Liquidations Endpoints');
   await testEndpoint('/api/collateralVaults/external-liquidations', 200, 'Get external liquidations');

@@ -87,6 +87,7 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
     try {
       const client = db.client(c);
       const vaultAddressParam = c.req.param("address");
+      const chainIds = parseChainIds(c.req.query("chainIds"));
 
       // Validate vault address parameter
       const addressValidation = validateAddress(vaultAddressParam);
@@ -101,6 +102,9 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
         return errorResponse(paginationValidation.error!);
       }
       const { limit, offset } = paginationValidation.value!;
+
+      // Parse optional flag
+      const includePricedAmounts = c.req.query("includePricedAmounts") !== "false";
 
       // Get all position snapshots for this specific vault with pagination
       const snapshots = await client
@@ -126,10 +130,150 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
         );
       }
 
+      // Fetch vault metrics to get decimals and prices for all relevant vaults
+      const chainIdStrings = chainIds.map(id => id.value.toString());
+      const vaultPricesQuery = sql.raw(`
+        WITH latest_metrics AS (
+          SELECT
+            vault_address,
+            decimals,
+            total_assets,
+            total_assets_usd,
+            symbol,
+            CASE
+              WHEN total_assets > 0 THEN total_assets_usd::numeric / total_assets::numeric
+              ELSE 0
+            END as price_per_token
+          FROM vault_metrics
+          WHERE (vault_address, block_number) IN (
+            SELECT vault_address, MAX(block_number) as max_block_number
+            FROM vault_metrics
+            WHERE chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+            GROUP BY vault_address
+          )
+            AND chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+        )
+        SELECT
+          vault_address,
+          price_per_token,
+          decimals,
+          symbol
+        FROM latest_metrics
+      `);
+
+      const vaultPricesResult = await client.execute(vaultPricesQuery);
+      const vaultPricesMap: Record<string, any> = {};
+
+      vaultPricesResult.rows.forEach((row: any) => {
+        const address = '0x' + Buffer.from(row.vault_address).toString('hex');
+        vaultPricesMap[address] = {
+          pricePerToken: parseFloat(row.price_per_token) || 0,
+          decimals: 18,
+          symbol: row.symbol
+        };
+      });
+
+      // Helper function to safely convert address fields to hex
+      const toAddressHex = (field: any): string => {
+        if (!field) return '0x0000000000000000000000000000000000000000';
+        if (Buffer.isBuffer(field)) return '0x' + field.toString('hex');
+        if (field.address) {
+          if (Buffer.isBuffer(field.address)) return '0x' + field.address.toString('hex');
+          return '0x' + Buffer.from(field.address).toString('hex');
+        }
+        if (typeof field === 'string') return field.startsWith('0x') ? field : '0x' + field;
+        return '0x0000000000000000000000000000000000000000';
+      };
+
+      // Format snapshots with scaled values
+      const formattedSnapshots = snapshots.map((snapshot: any) => {
+        const underlyingCollateralVault = toAddressHex(snapshot.underlyingCollateralVault);
+        const creditVault = toAddressHex(snapshot.creditVault);
+        const debtVault = toAddressHex(snapshot.targetVault);
+
+        // Helper to safely extract BigInt value
+        const toBigInt = (field: any): bigint => {
+          if (!field) return BigInt(0);
+          if (typeof field === 'bigint') return field;
+
+          // Handle Drizzle Uint type - extract .value first
+          const value = field?.value !== undefined ? field.value : field;
+
+          // Now convert the extracted value
+          if (typeof value === 'bigint') return value;
+          if (typeof value === 'string') return BigInt(value);
+          if (typeof value === 'number') return BigInt(Math.floor(value));
+
+          // If it's still an object, try toString
+          try {
+            if (typeof value === 'object' && value !== null) {
+              return BigInt(value.toString());
+            }
+          } catch (e) {
+            console.error('Failed to convert to BigInt:', value, e);
+          }
+
+          return BigInt(0);
+        };
+
+        const userOwnedCollateral = toBigInt(snapshot.userOwnedCollateral);
+        const maxRelease = toBigInt(snapshot.maxRelease);
+        const maxRepay = toBigInt(snapshot.maxRepay);
+        const totalAssetsDepositedOrReserved = toBigInt(snapshot.totalAssetsDepositedOrReserved);
+
+        // Get decimals for each vault
+        const underlyingDecimals = vaultPricesMap[underlyingCollateralVault]?.decimals || 18;
+        const creditDecimals = vaultPricesMap[creditVault]?.decimals || 18;
+        const debtDecimals = vaultPricesMap[debtVault]?.decimals || 18;
+
+        // Calculate scale factors
+        const underlyingScaleFactor = Math.pow(10, underlyingDecimals);
+        const creditScaleFactor = Math.pow(10, creditDecimals);
+        const debtScaleFactor = Math.pow(10, debtDecimals);
+
+        // Calculate scaled amounts
+        const userOwnedCollateralScaled = Number(userOwnedCollateral) / underlyingScaleFactor;
+        const maxReleaseScaled = Number(maxRelease) / creditScaleFactor;
+        const maxRepayScaled = Number(maxRepay) / debtScaleFactor;
+        const totalAssetsDepositedOrReservedScaled = Number(totalAssetsDepositedOrReserved) / underlyingScaleFactor;
+
+        const result: any = {
+          vaultAddress: toAddressHex(snapshot.vaultAddress),
+          underlyingCollateralVault,
+          creditVault,
+          debtVault,
+          userOwnedCollateral: userOwnedCollateralScaled,
+          maxRelease: maxReleaseScaled,
+          maxRepay: maxRepayScaled,
+          totalAssetsDepositedOrReserved: totalAssetsDepositedOrReservedScaled,
+          canLiquidate: snapshot.canLiquidate,
+          isExternallyLiquidated: snapshot.isExternallyLiquidated,
+          twyneLiqLtv: Number(snapshot.twyneLiqLtv?.value || snapshot.twyneLiqLtv || 0) / 1e4,
+          state: snapshot.state,
+          txType: snapshot.txType,
+          blockNumber: Number(snapshot.blockNumber?.value || snapshot.blockNumber || 0),
+          blockTimestamp: Number(snapshot.blockTimestamp?.value || snapshot.blockTimestamp || 0),
+          logIndex: Number(snapshot.log_index || 0)
+        };
+
+        if (includePricedAmounts) {
+          const underlyingPrice = vaultPricesMap[underlyingCollateralVault]?.pricePerToken || 0;
+          const creditPrice = vaultPricesMap[creditVault]?.pricePerToken || 0;
+          const debtPrice = vaultPricesMap[debtVault]?.pricePerToken || 0;
+
+          result.userOwnedCollateralUsd = userOwnedCollateralScaled * underlyingPrice;
+          result.maxReleaseUsd = maxReleaseScaled * creditPrice;
+          result.maxRepayUsd = maxRepayScaled * debtPrice;
+          result.totalAssetsDepositedOrReservedUsd = totalAssetsDepositedOrReservedScaled * underlyingPrice;
+        }
+
+        return result;
+      });
+
       return Response.json({
         vaultAddress: vaultAddressParam,
-        snapshots,
-        count: snapshots.length,
+        snapshots: formattedSnapshots,
+        count: formattedSnapshots.length,
         totalCount,
         limit,
         offset,
@@ -207,9 +351,143 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
 
       const totalCount = totalCountResult[0].count;
 
+      // Fetch vault metrics to get decimals for scaling
+      const chainIdStrings = chainIds.map(id => id.value.toString());
+      const vaultPricesQuery = sql.raw(`
+        WITH latest_metrics AS (
+          SELECT
+            vault_address,
+            decimals,
+            symbol
+          FROM vault_metrics
+          WHERE (vault_address, block_number) IN (
+            SELECT vault_address, MAX(block_number) as max_block_number
+            FROM vault_metrics
+            WHERE chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+            GROUP BY vault_address
+          )
+            AND chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+        )
+        SELECT
+          vault_address,
+          decimals,
+          symbol
+        FROM latest_metrics
+      `);
+
+      const vaultPricesResult = await client.execute(vaultPricesQuery);
+      const vaultDecimalsMap: Record<string, number> = {};
+
+      vaultPricesResult.rows.forEach((row: any) => {
+        const address = '0x' + Buffer.from(row.vault_address).toString('hex');
+        vaultDecimalsMap[address] = Number(row.decimals) || 18;
+      });
+
+      // Format liquidations with scaled values
+      const formattedLiquidations = liquidations.map((liq: any) => {
+        const underlyingCollateralVault = '0x' + Buffer.from(liq.underlyingCollateralVault.address).toString('hex');
+        const creditVault = '0x' + Buffer.from(liq.creditVault.address).toString('hex');
+        const debtVault = '0x' + Buffer.from(liq.debtVault.address).toString('hex');
+
+        // Get decimals for each vault
+        const underlyingDecimals = vaultDecimalsMap[underlyingCollateralVault] || 18;
+        const creditDecimals = vaultDecimalsMap[creditVault] || 18;
+        const debtDecimals = vaultDecimalsMap[debtVault] || 18;
+
+        // Calculate scale factors
+        const underlyingScaleFactor = Math.pow(10, underlyingDecimals);
+        const creditScaleFactor = Math.pow(10, creditDecimals);
+        const debtScaleFactor = Math.pow(10, debtDecimals);
+        const usdScaleFactor = 1e18; // USD values are stored with 18 decimals
+
+        // Helper function to convert address-like fields to hex
+        const toHex = (field: any): string => {
+          if (!field) return '0x';
+
+          // Handle Buffer directly
+          if (Buffer.isBuffer(field)) {
+            return '0x' + field.toString('hex');
+          }
+
+          // Handle objects with .address property (Drizzle Address type)
+          if (field.address !== undefined) {
+            if (Buffer.isBuffer(field.address)) {
+              return '0x' + field.address.toString('hex');
+            }
+            try {
+              return '0x' + Buffer.from(field.address).toString('hex');
+            } catch {
+              return '0x';
+            }
+          }
+
+          // Handle string
+          if (typeof field === 'string') {
+            return field.startsWith('0x') ? field : '0x' + field;
+          }
+
+          // Handle Uint8Array or array-like (Drizzle _Bytes type)
+          if (field.length !== undefined || Array.isArray(field)) {
+            try {
+              const bytes = Array.isArray(field) ? field : Array.from(field);
+              return '0x' + Buffer.from(bytes).toString('hex');
+            } catch {
+              return '0x';
+            }
+          }
+
+          // Last resort: try to extract bytes from object
+          try {
+            if (typeof field === 'object') {
+              const bytes = Object.values(field);
+              if (bytes.every(b => typeof b === 'number')) {
+                return '0x' + Buffer.from(bytes as number[]).toString('hex');
+              }
+            }
+          } catch {
+            // Fall through
+          }
+
+          return '0x';
+        };
+
+        return {
+          vaultAddress: toHex(liq.vaultAddress),
+          blockNumber: Number(liq.blockNumber.value),
+          blockTimestamp: Number(liq.blockTimestamp.value),
+          txnHash: liq.txnHash, // Let Drizzle handle serialization
+          liquidator: toHex(liq.liquidator),
+          violator: toHex(liq.violator),
+          collateral: toHex(liq.collateral),
+          repayAssets: Number(liq.repayAssets.value) / debtScaleFactor,
+          yieldBalance: Number(liq.yieldBalance.value) / creditScaleFactor,
+          repayAssetsUsd: Number(liq.repayAssetsUsd.value) / usdScaleFactor,
+          yieldBalanceUsd: Number(liq.yieldBalanceUsd.value) / usdScaleFactor,
+          collateralAmount: Number(liq.collateralAmount.value) / underlyingScaleFactor,
+          debtAmount: Number(liq.debtAmount.value) / debtScaleFactor,
+          collateralAmountUsd: Number(liq.collateralAmountUsd.value) / usdScaleFactor,
+          debtAmountUsd: Number(liq.debtAmountUsd.value) / usdScaleFactor,
+          eulerLiqLtv: Number(liq.eulerLiqLtv.value) / 1e4,
+          twyneLiqLtv: Number(liq.twyneLiqLtv.value) / 1e4,
+          twyneMaxLiqLtv: Number(liq.twyneMaxLiqLtv.value) / 1e4,
+          twyneSafetyBuffer: Number(liq.twyneSafetyBuffer.value) / 1e4,
+          preCollateralAmount: Number(liq.preCollateralAmount.value) / underlyingScaleFactor,
+          preCollateralAmountUsd: Number(liq.preCollateralAmountUsd.value) / usdScaleFactor,
+          preDebtAmount: Number(liq.preDebtAmount.value) / debtScaleFactor,
+          preDebtAmountUsd: Number(liq.preDebtAmountUsd.value) / usdScaleFactor,
+          preCreditReserved: Number(liq.preCreditReserved.value) / creditScaleFactor,
+          preCreditReservedUsd: Number(liq.preCreditReservedUsd.value) / usdScaleFactor,
+          creditReserved: Number(liq.creditReserved.value) / creditScaleFactor,
+          creditReservedUsd: Number(liq.creditReservedUsd.value) / usdScaleFactor,
+          creditVault,
+          debtVault,
+          underlyingCollateralVault
+        };
+      });
+
       return Response.json({
-        externalLiquidations: liquidations,
-        count: liquidations.length,
+        externalLiquidations: formattedLiquidations,
+        count: formattedLiquidations.length,
         totalCount,
         limit,
         offset,
@@ -292,9 +570,83 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
 
       const totalCount = Number(countResult[0]?.count || 0);
 
+      // Fetch vault metrics to get decimals for scaling
+      const chainIdStrings = chainIds.map(id => id.value.toString());
+      const vaultPricesQuery = sql.raw(`
+        WITH latest_metrics AS (
+          SELECT
+            vault_address,
+            decimals,
+            symbol
+          FROM vault_metrics
+          WHERE (vault_address, block_number) IN (
+            SELECT vault_address, MAX(block_number) as max_block_number
+            FROM vault_metrics
+            WHERE chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+            GROUP BY vault_address
+          )
+            AND chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+        )
+        SELECT
+          vault_address,
+          decimals,
+          symbol
+        FROM latest_metrics
+      `);
+
+      const vaultPricesResult = await client.execute(vaultPricesQuery);
+      const vaultDecimalsMap: Record<string, number> = {};
+
+      vaultPricesResult.rows.forEach((row: any) => {
+        const address = '0x' + Buffer.from(row.vault_address).toString('hex');
+        vaultDecimalsMap[address] = Number(row.decimals) || 18;
+      });
+
+      // Format liquidations with scaled values
+      const formattedLiquidations = liquidations.map((liq: any) => {
+        // Convert addresses to hex strings
+        const underlyingCollateralVault = '0x' + Buffer.from(liq.underlyingCollateralVault.address).toString('hex');
+        const creditVault = '0x' + Buffer.from(liq.creditVault.address).toString('hex');
+        const debtVault = '0x' + Buffer.from(liq.debtVault.address).toString('hex');
+        const collateralVault = '0x' + Buffer.from(liq.collateralVault.address).toString('hex');
+
+        // Get decimals for each vault
+        const underlyingDecimals = vaultDecimalsMap[underlyingCollateralVault] || 18;
+        const creditDecimals = vaultDecimalsMap[creditVault] || 18;
+        const debtDecimals = vaultDecimalsMap[debtVault] || 18;
+
+        // Calculate scale factors
+        const underlyingScaleFactor = Math.pow(10, underlyingDecimals);
+        const creditScaleFactor = Math.pow(10, creditDecimals);
+        const debtScaleFactor = Math.pow(10, debtDecimals);
+        const usdScaleFactor = 1e18; // USD values are stored with 18 decimals
+
+        return {
+          chainId: Number(liq.chainId.value),
+          factoryAddress: '0x' + Buffer.from(liq.factoryAddress.address).toString('hex'),
+          collateralVault,
+          creditVault,
+          debtVault,
+          underlyingCollateralVault,
+          liquidatorAddress: '0x' + Buffer.from(liq.liquidatorAddress.address).toString('hex'),
+          blockNumber: Number(liq.blockNumber.value),
+          blockTimestamp: Number(liq.blockTimestamp.value),
+          txnHash: liq.txnHash,
+          creditReserved: Number(liq.creditReserved.value) / creditScaleFactor,
+          debt: Number(liq.debt.value) / debtScaleFactor,
+          totalCollateral: Number(liq.totalCollateral.value) / underlyingScaleFactor,
+          userOwnedCollateral: Number(liq.userOwnedCollateral.value) / underlyingScaleFactor,
+          twyneLiqLtv: Number(liq.twyneLiqLtv.value) / 1e4,
+          creditReservedUsd: Number(liq.creditReservedUsd.value) / usdScaleFactor,
+          debtUsd: Number(liq.debtUsd.value) / usdScaleFactor,
+          totalCollateralUsd: Number(liq.totalCollateralUsd.value) / usdScaleFactor,
+          userOwnedCollateralUsd: Number(liq.userOwnedCollateralUsd.value) / usdScaleFactor
+        };
+      });
+
       return Response.json({
-        internalLiquidations: liquidations,
-        count: liquidations.length,
+        internalLiquidations: formattedLiquidations,
+        count: formattedLiquidations.length,
         totalCount,
         limit,
         offset,
@@ -326,17 +678,59 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
       }
       const { limit, offset } = paginationValidation.value!;
 
-      // Parse optional block number parameter
+      // Parse optional block number and timestamp parameters
       const blockNumberParam = c.req.query("blockNumber");
+      const timestampParam = c.req.query("timestamp");
       let targetBlock: types.Uint;
+      let targetTimestamp: types.Uint | null = null;
 
       if (blockNumberParam) {
-        // Use provided block number
+        // Use provided block number (priority over timestamp)
         const blockValidation = validateBlockNumber(blockNumberParam);
         if (!blockValidation.success) {
           return errorResponse(blockValidation.error!);
         }
         targetBlock = blockValidation.value!;
+      } else if (timestampParam) {
+        // Use provided timestamp to find the closest block
+        const timestampValidation = validateTimestamp(timestampParam);
+        if (!timestampValidation.success) {
+          return errorResponse(timestampValidation.error!);
+        }
+        targetTimestamp = timestampValidation.value!;
+
+        // Find the max block number where block_timestamp <= target timestamp
+        const chainIdStrings = chainIds.map(id => id.value.toString());
+        const blockAtTimestampQuery = sql.raw(`
+          SELECT MAX(block_number) as max_block
+          FROM vault_metrics
+          WHERE block_timestamp <= ${targetTimestamp.value.toString()}
+            AND chain_id = ANY(ARRAY[${chainIdStrings.join(',')}]::numeric[])
+        `);
+
+        const blockAtTimestampResult = await client.execute(blockAtTimestampQuery);
+        const maxBlock = blockAtTimestampResult.rows[0]?.max_block as string | number | undefined;
+
+        if (!maxBlock) {
+          return Response.json({
+            blockNumber: null,
+            snapshotBlock: null,
+            priceBlock: null,
+            timestamp: Number(targetTimestamp.value),
+            snapshots: [],
+            vaultPrices: {},
+            aggregates: {
+              totalUserOwnedCollateralUsd: 0,
+              totalMaxReleaseUsd: 0,
+              totalMaxRepayUsd: 0,
+              totalAssetsDepositedOrReservedUsd: 0,
+              uniqueVaults: 0
+            },
+            responseTimestamp: new Date().toISOString()
+          });
+        }
+
+        targetBlock = new Uint(BigInt(maxBlock));
       } else {
         // Fetch the max block number from vault_metrics table
         const chainIdStrings = chainIds.map(id => id.value.toString());
@@ -363,7 +757,7 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
               totalAssetsDepositedOrReservedUsd: 0,
               uniqueVaults: 0
             },
-            timestamp: new Date().toISOString()
+            responseTimestamp: new Date().toISOString()
           });
         }
 
@@ -371,7 +765,6 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
       }
 
       // Parse optional flags
-      const includeRawAmounts = c.req.query("includeRawAmounts") !== "false";
       const includePricedAmounts = c.req.query("includePricedAmounts") !== "false";
 
       // Parse optional filters
@@ -481,9 +874,10 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
 
       if (snapshots.length === 0) {
         return Response.json({
-          blockNumber: targetBlock.toString(),
+          blockNumber: Number(targetBlock.value),
           snapshotBlock: null,
           priceBlock: null,
+          ...(targetTimestamp && { timestamp: Number(targetTimestamp.value) }),
           snapshots: [],
           vaultPrices: {},
           aggregates: {
@@ -500,7 +894,7 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
             canLiquidate: canLiquidateFilter,
             isExternallyLiquidated: isExternallyLiquidatedFilter
           },
-          timestamp: new Date().toISOString()
+          responseTimestamp: new Date().toISOString()
         });
       }
 
@@ -526,7 +920,9 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
             total_assets,
             total_assets_usd,
             symbol,
+            decimals,
             block_number,
+            block_timestamp,
             CASE
               WHEN total_assets > 0 THEN total_assets_usd::numeric / total_assets::numeric
               ELSE 0
@@ -546,7 +942,9 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
           vault_address,
           price_per_token,
           symbol,
-          block_number
+          decimals,
+          block_number,
+          block_timestamp
         FROM latest_metrics
       `);
 
@@ -556,14 +954,15 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
       vaultPricesResult.rows.forEach((row: any) => {
         const address = '0x' + Buffer.from(row.vault_address).toString('hex');
         vaultPricesMap[address] = {
-          pricePerToken: parseFloat(row.price_per_token) || 0,
+          pricePerToken: (parseFloat(row.price_per_token) / (10 ** (18-Number(row.decimals)))) || 0,
           symbol: row.symbol,
-          blockNumber: row.block_number.toString()
+          decimals: Number(row.decimals) || 18,
+          blockNumber: Number(row.block_number),
+          blockTimestamp: Number(row.block_timestamp)
         };
       });
 
-      // Step 4: Calculate USD values and format snapshots
-      const scaleFactor = 1e18;
+      // Step 4: Calculate scaled and USD values using proper decimals
       let totalUserOwnedCollateralUsd = 0;
       let totalMaxReleaseUsd = 0;
       let totalMaxRepayUsd = 0;
@@ -580,16 +979,31 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
         const maxRepay = BigInt(snapshot.max_repay);
         const totalAssetsDepositedOrReserved = BigInt(snapshot.total_assets_deposited_or_reserved);
 
-        // Get prices from vault metrics
+        // Get prices and decimals from vault metrics
         const underlyingPrice = vaultPricesMap[underlyingCollateralVault]?.pricePerToken || 0;
         const creditPrice = vaultPricesMap[creditVault]?.pricePerToken || 0;
         const debtPrice = vaultPricesMap[debtVault]?.pricePerToken || 0;
 
-        // Calculate USD values
-        const userOwnedCollateralUsd = (Number(userOwnedCollateral) / scaleFactor) * underlyingPrice;
-        const maxReleaseUsd = (Number(maxRelease) / scaleFactor) * creditPrice;
-        const maxRepayUsd = (Number(maxRepay) / scaleFactor) * debtPrice;
-        const assetsDepositedOrReservedUsd = (Number(totalAssetsDepositedOrReserved) / scaleFactor) * underlyingPrice;
+        const underlyingDecimals = vaultPricesMap[underlyingCollateralVault]?.decimals || 18;
+        const creditDecimals = vaultPricesMap[creditVault]?.decimals || 18;
+        const debtDecimals = vaultPricesMap[debtVault]?.decimals || 18;
+
+        // Calculate scale factors based on decimals
+        const underlyingScaleFactor = Math.pow(10, underlyingDecimals);
+        const creditScaleFactor = Math.pow(10, creditDecimals);
+        const debtScaleFactor = Math.pow(10, debtDecimals);
+
+        // Calculate scaled amounts (human-readable token amounts)
+        const userOwnedCollateralScaled = Number(userOwnedCollateral) / underlyingScaleFactor;
+        const maxReleaseScaled = Number(maxRelease) / creditScaleFactor;
+        const maxRepayScaled = Number(maxRepay) / debtScaleFactor;
+        const totalAssetsDepositedOrReservedScaled = Number(totalAssetsDepositedOrReserved) / underlyingScaleFactor;
+
+        // Calculate USD values using scaled amounts and prices
+        const userOwnedCollateralUsd = userOwnedCollateralScaled * underlyingPrice;
+        const maxReleaseUsd = maxReleaseScaled * creditPrice;
+        const maxRepayUsd = maxRepayScaled * debtPrice;
+        const assetsDepositedOrReservedUsd = totalAssetsDepositedOrReservedScaled * underlyingPrice;
 
         // Aggregate totals
         totalUserOwnedCollateralUsd += userOwnedCollateralUsd;
@@ -604,18 +1018,23 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
           debtVault,
           canLiquidate: snapshot.can_liquidate,
           isExternallyLiquidated: snapshot.is_externally_liquidated,
-          twyneLiqLtv: snapshot.twyne_liq_ltv.toString(),
-          blockNumber: snapshot.block_number.toString(),
-          blockTimestamp: snapshot.block_timestamp.toString(),
-          logIndex: snapshot.log_index.toString()
+          twyneLiqLtv: snapshot.twyne_liq_ltv / 1e4,
+          blockNumber: Number(snapshot.block_number),
+          blockTimestamp: Number(snapshot.block_timestamp),
+          logIndex: Number(snapshot.log_index),
+          // Add price data metadata for each vault
+          underlyingCollateralVaultPriceBlock: vaultPricesMap[underlyingCollateralVault]?.blockNumber || null,
+          underlyingCollateralVaultPriceTimestamp: vaultPricesMap[underlyingCollateralVault]?.blockTimestamp || null,
+          creditVaultPriceBlock: vaultPricesMap[creditVault]?.blockNumber || null,
+          creditVaultPriceTimestamp: vaultPricesMap[creditVault]?.blockTimestamp || null,
+          debtVaultPriceBlock: vaultPricesMap[debtVault]?.blockNumber || null,
+          debtVaultPriceTimestamp: vaultPricesMap[debtVault]?.blockTimestamp || null
         };
 
-        if (includeRawAmounts) {
-          result.userOwnedCollateral = userOwnedCollateral.toString();
-          result.maxRelease = maxRelease.toString();
-          result.maxRepay = maxRepay.toString();
-          result.totalAssetsDepositedOrReserved = totalAssetsDepositedOrReserved.toString();
-        }
+        result.userOwnedCollateral = userOwnedCollateralScaled;
+        result.maxRelease = maxReleaseScaled;
+        result.maxRepay = maxRepayScaled;
+        result.totalAssetsDepositedOrReserved = totalAssetsDepositedOrReservedScaled;
 
         if (includePricedAmounts) {
           result.userOwnedCollateralUsd = userOwnedCollateralUsd;
@@ -638,9 +1057,10 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
         : null;
 
       return Response.json({
-        blockNumber: targetBlock.toString(),
-        snapshotBlock: snapshotBlock?.toString() || null,
-        priceBlock: priceBlock?.toString() || null,
+        blockNumber: Number(targetBlock.value),
+        snapshotBlock,
+        priceBlock,
+        ...(targetTimestamp && { timestamp: Number(targetTimestamp.value) }),
         snapshots: formattedSnapshots,
         vaultPrices: vaultPricesMap,
         aggregates: {
@@ -658,7 +1078,7 @@ export function registerCollateralVaultRoutes(app: ReturnType<typeof App.create>
           isExternallyLiquidated: isExternallyLiquidatedFilter,
           vaultAddresses: vaultAddressesParam
         },
-        timestamp: new Date().toISOString()
+        responseTimestamp: new Date().toISOString()
       });
 
     } catch (e) {
