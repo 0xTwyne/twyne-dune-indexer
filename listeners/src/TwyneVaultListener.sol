@@ -21,7 +21,17 @@ contract TwyneVaultListener is
     EulerCollateralVault$PreTeleportFunction,
     EulerCollateralVault$OnTTeleportEvent,
     EulerCollateralVault$PreLiquidateFunction,
-    EulerCollateralVault$OnLiquidateFunction
+    EulerCollateralVault$OnLiquidateFunction,
+    EulerCollateralVault$PreHandleExternalLiquidationFunction,
+    EulerCollateralVault$OnTHandleExternalLiquidationEvent,
+    EulerCollateralVault$OnTLeverageUpExecutedEvent,
+    EulerCollateralVault$OnTLeverageDownExecutedEvent,
+    EulerCollateralVault$PreRebalanceFunction,
+    EulerCollateralVault$OnTRebalanceEvent,
+    EulerCollateralVault$PreRedeemUnderlyingFunction,
+    EulerCollateralVault$OnTRedeemUnderlyingEvent,
+    EulerCollateralVault$PreSkimFunction,
+    EulerCollateralVault$OnTSkimEvent
     {
     
     uint256 logIndex;
@@ -119,6 +129,94 @@ contract TwyneVaultListener is
         uint256 logIndex;
     }
 
+    // Event to track handleExternalLiquidation operations
+    /// @custom:index vault_handle_external_liquidation_by_vault BTREE (vaultAddress, blockTimestamp);
+    /// @custom:index vault_handle_external_liquidation_by_user BTREE (userAddress, blockTimestamp);
+    event VaultHandleExternalLiquidation(VaultHandleExternalLiquidationData);
+    struct VaultHandleExternalLiquidationData {
+        uint256 chainId;
+        address vaultAddress;
+        address userAddress;
+        uint64 blockNumber;
+        uint64 blockTimestamp;
+        bytes32 txnHash;
+        uint256 logIndex;
+    }
+
+    // Event to track leverageUpExecuted operations
+    /// @custom:index vault_leverage_up_executed_by_vault BTREE (vaultAddress, blockTimestamp);
+    /// @custom:index vault_leverage_up_executed_by_user BTREE (userAddress, blockTimestamp);
+    event VaultLeverageUpExecuted(VaultLeverageUpExecutedData);
+    struct VaultLeverageUpExecutedData {
+        uint256 chainId;
+        address vaultAddress;
+        address userAddress;
+        uint64 blockNumber;
+        uint64 blockTimestamp;
+        bytes32 txnHash;
+        uint256 logIndex;
+    }
+
+    // Event to track leverageDownExecuted operations
+    /// @custom:index vault_leverage_down_executed_by_vault BTREE (vaultAddress, blockTimestamp);
+    /// @custom:index vault_leverage_down_executed_by_user BTREE (userAddress, blockTimestamp);
+    event VaultLeverageDownExecuted(VaultLeverageDownExecutedData);
+    struct VaultLeverageDownExecutedData {
+        uint256 chainId;
+        address vaultAddress;
+        address userAddress;
+        uint64 blockNumber;
+        uint64 blockTimestamp;
+        bytes32 txnHash;
+        uint256 logIndex;
+    }
+
+    // Event to track rebalance operations
+    /// @custom:index vault_rebalance_by_vault BTREE (vaultAddress, blockTimestamp);
+    /// @custom:index vault_rebalance_by_user BTREE (userAddress, blockTimestamp);
+    event VaultRebalance(VaultRebalanceData);
+    struct VaultRebalanceData {
+        uint256 chainId;
+        address vaultAddress;
+        address userAddress;
+        uint64 blockNumber;
+        uint64 blockTimestamp;
+        bytes32 txnHash;
+        uint256 logIndex;
+    }
+
+    // Event to track redeemUnderlying operations
+    /// @custom:index vault_redeem_underlying_by_vault BTREE (vaultAddress, blockTimestamp);
+    /// @custom:index vault_redeem_underlying_by_user BTREE (userAddress, blockTimestamp);
+    event VaultRedeemUnderlying(VaultRedeemUnderlyingData);
+    struct VaultRedeemUnderlyingData {
+        uint256 chainId;
+        address vaultAddress;
+        uint256 amount;
+        address receiver;
+        address userAddress;
+        uint64 blockNumber;
+        uint64 blockTimestamp;
+        bytes32 txnHash;
+        uint256 logIndex;
+    }
+
+    // Event to track skim operations
+    /// @custom:index vault_skim_by_vault BTREE (vaultAddress, blockTimestamp);
+    /// @custom:index vault_skim_by_user BTREE (userAddress, blockTimestamp);
+    event VaultSkim(VaultSkimData);
+    struct VaultSkimData {
+        uint256 chainId;
+        address vaultAddress;
+        uint256 amount;
+        address userAddress;
+        uint64 blockNumber;
+        uint64 blockTimestamp;
+        bytes32 txnHash;
+        uint256 logIndex;
+    }
+
+    // Event to track position snapshot
     /// @custom:index position_snapshot_by_vault BTREE (vaultAddress, blockTimestamp);
     event PositionSnapshot(PositionSnapshotData);
     struct PositionSnapshotData {
@@ -210,6 +308,144 @@ contract TwyneVaultListener is
             state: state,
             txType: txType
         });
+    }
+
+    function preHandleExternalLiquidationFunction(
+        PreFunctionContext memory ctx
+    ) external override {
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "pre", "handleExternalLiquidation");
+        emit PositionSnapshot(snapshot);
+    }
+
+    function onTHandleExternalLiquidationEvent(
+        EventContext memory ctx
+    ) external override {
+        emit VaultHandleExternalLiquidation(VaultHandleExternalLiquidationData({
+            chainId: uint256(block.chainid),
+            vaultAddress: ctx.txn.call.callee(),
+            userAddress: ctx.txn.call.caller(),
+            blockNumber: uint64(block.number),
+            blockTimestamp: uint64(block.timestamp),
+            txnHash: ctx.txn.hash(),
+            logIndex: logIndex
+        }));
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "post", "handleExternalLiquidation");
+        emit PositionSnapshot(snapshot);
+        logIndex += 1;
+    }
+
+    function onTLeverageUpExecutedEvent(
+        EventContext memory ctx,
+        EulerCollateralVault$TLeverageUpExecutedEventParams memory inputs
+    ) external override {
+        emit VaultLeverageUpExecuted(VaultLeverageUpExecutedData({
+            chainId: uint256(block.chainid),
+            vaultAddress: ctx.txn.call.callee(),
+            userAddress: ctx.txn.call.caller(),
+            blockNumber: uint64(block.number),
+            blockTimestamp: uint64(block.timestamp),
+            txnHash: ctx.txn.hash(),
+            logIndex: logIndex
+        }));
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "post", "leverageUpExecuted");
+        emit PositionSnapshot(snapshot);
+        logIndex += 1;
+    }
+
+    function onTLeverageDownExecutedEvent(
+        EventContext memory ctx,
+        EulerCollateralVault$TLeverageDownExecutedEventParams memory inputs
+    ) external override {
+        emit VaultLeverageDownExecuted(VaultLeverageDownExecutedData({
+            chainId: uint256(block.chainid),
+            vaultAddress: ctx.txn.call.callee(),
+            userAddress: ctx.txn.call.caller(),
+            blockNumber: uint64(block.number),
+            blockTimestamp: uint64(block.timestamp),
+            txnHash: ctx.txn.hash(),
+            logIndex: logIndex
+        }));
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "post", "leverageDownExecuted");
+        emit PositionSnapshot(snapshot);
+        logIndex += 1;
+    }
+
+    function preRebalanceFunction(
+        PreFunctionContext memory ctx
+    ) external override {
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "pre", "rebalance");
+        emit PositionSnapshot(snapshot);
+    }
+
+    function onTRebalanceEvent(
+        EventContext memory ctx
+    ) external override {
+        emit VaultRebalance(VaultRebalanceData({
+            chainId: uint256(block.chainid),
+            vaultAddress: ctx.txn.call.callee(),
+            blockNumber: uint64(block.number),
+            userAddress: ctx.txn.call.caller(),
+            blockTimestamp: uint64(block.timestamp),
+            txnHash: ctx.txn.hash(),
+            logIndex: logIndex
+        }));
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "post", "rebalance");
+        emit PositionSnapshot(snapshot);
+        logIndex += 1;
+    }
+
+    function preRedeemUnderlyingFunction(
+        PreFunctionContext memory ctx,
+        EulerCollateralVault$RedeemUnderlyingFunctionInputs memory inputs
+    ) external override {
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "pre", "redeemUnderlying");
+        emit PositionSnapshot(snapshot);
+    }
+    
+    function onTRedeemUnderlyingEvent(
+        EventContext memory ctx, 
+        EulerCollateralVault$TRedeemUnderlyingEventParams memory inputs
+    ) external override {
+        emit VaultRedeemUnderlying(VaultRedeemUnderlyingData({
+            chainId: uint256(block.chainid),
+            vaultAddress: ctx.txn.call.callee(),
+            amount: inputs.amount,
+            receiver: inputs.receiver,
+            userAddress: ctx.txn.call.caller(),
+            blockNumber: uint64(block.number),
+            blockTimestamp: uint64(block.timestamp),
+            txnHash: ctx.txn.hash(),
+            logIndex: logIndex
+        }));
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "post", "redeemUnderlying");
+        emit PositionSnapshot(snapshot);
+        logIndex += 1;
+    }
+
+    function preSkimFunction(
+        PreFunctionContext memory ctx
+    ) external override {
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "pre", "skim");
+        emit PositionSnapshot(snapshot);
+    }
+
+    function onTSkimEvent(
+        EventContext memory ctx, 
+        EulerCollateralVault$TSkimEventParams memory inputs
+    ) external override {
+        emit VaultSkim(VaultSkimData({
+            chainId: uint256(block.chainid),
+            vaultAddress: ctx.txn.call.callee(),
+            amount: inputs.amount,
+            userAddress: ctx.txn.call.caller(),
+            blockNumber: uint64(block.number),
+            blockTimestamp: uint64(block.timestamp),
+            txnHash: ctx.txn.hash(),
+            logIndex: logIndex
+        }));
+        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "post", "skim");
+        emit PositionSnapshot(snapshot);
+        logIndex += 1;
     }
 
     function preDepositFunction(
@@ -393,7 +629,7 @@ contract TwyneVaultListener is
     }
 
     function getTriggers() external view returns (Trigger[] memory) {
-        Trigger[] memory triggers = new Trigger[](14);
+        Trigger[] memory triggers = new Trigger[](24);
         triggers[0] = this.triggerPreDepositFunction();
         triggers[1] = this.triggerOnTDepositEvent();
         triggers[2] = this.triggerPreDepositUnderlyingFunction();
@@ -408,6 +644,16 @@ contract TwyneVaultListener is
         triggers[11] = this.triggerOnTTeleportEvent();
         triggers[12] = this.triggerPreLiquidateFunction();
         triggers[13] = this.triggerOnLiquidateFunction();
+        triggers[14] = this.triggerPreHandleExternalLiquidationFunction();
+        triggers[15] = this.triggerOnTHandleExternalLiquidationEvent();
+        triggers[16] = this.triggerOnTLeverageUpExecutedEvent();
+        triggers[17] = this.triggerOnTLeverageDownExecutedEvent();
+        triggers[18] = this.triggerPreRebalanceFunction();
+        triggers[19] = this.triggerOnTRebalanceEvent();
+        triggers[20] = this.triggerPreRedeemUnderlyingFunction();
+        triggers[21] = this.triggerOnTRedeemUnderlyingEvent();
+        triggers[22] = this.triggerPreSkimFunction();
+        triggers[23] = this.triggerOnTSkimEvent();
         return triggers;
     }
     

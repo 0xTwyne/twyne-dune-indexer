@@ -555,10 +555,80 @@
     },
     {
         "type": "event",
+        "name": "T_HandleExternalLiquidation",
+        "inputs": [],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "T_LeverageDownExecuted",
+        "inputs": [
+            {
+                "name": "collateralVault",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "T_LeverageUpExecuted",
+        "inputs": [
+            {
+                "name": "collateralVault",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "T_Rebalance",
+        "inputs": [],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "T_RedeemUnderlying",
+        "inputs": [
+            {
+                "name": "amount",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            },
+            {
+                "name": "receiver",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
         "name": "T_Repay",
         "inputs": [
             {
                 "name": "repayAmount",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "T_Skim",
+        "inputs": [
+            {
+                "name": "amount",
                 "type": "uint256",
                 "indexed": false,
                 "internalType": "uint256"
