@@ -24,8 +24,6 @@ contract TwyneVaultListener is
     EulerCollateralVault$OnLiquidateFunction,
     EulerCollateralVault$PreHandleExternalLiquidationFunction,
     EulerCollateralVault$OnTHandleExternalLiquidationEvent,
-    EulerCollateralVault$OnTLeverageUpExecutedEvent,
-    EulerCollateralVault$OnTLeverageDownExecutedEvent,
     EulerCollateralVault$PreRebalanceFunction,
     EulerCollateralVault$OnTRebalanceEvent,
     EulerCollateralVault$PreRedeemUnderlyingFunction,
@@ -134,34 +132,6 @@ contract TwyneVaultListener is
     /// @custom:index vault_handle_external_liquidation_by_user BTREE (userAddress, blockTimestamp);
     event VaultHandleExternalLiquidation(VaultHandleExternalLiquidationData);
     struct VaultHandleExternalLiquidationData {
-        uint256 chainId;
-        address vaultAddress;
-        address userAddress;
-        uint64 blockNumber;
-        uint64 blockTimestamp;
-        bytes32 txnHash;
-        uint256 logIndex;
-    }
-
-    // Event to track leverageUpExecuted operations
-    /// @custom:index vault_leverage_up_executed_by_vault BTREE (vaultAddress, blockTimestamp);
-    /// @custom:index vault_leverage_up_executed_by_user BTREE (userAddress, blockTimestamp);
-    event VaultLeverageUpExecuted(VaultLeverageUpExecutedData);
-    struct VaultLeverageUpExecutedData {
-        uint256 chainId;
-        address vaultAddress;
-        address userAddress;
-        uint64 blockNumber;
-        uint64 blockTimestamp;
-        bytes32 txnHash;
-        uint256 logIndex;
-    }
-
-    // Event to track leverageDownExecuted operations
-    /// @custom:index vault_leverage_down_executed_by_vault BTREE (vaultAddress, blockTimestamp);
-    /// @custom:index vault_leverage_down_executed_by_user BTREE (userAddress, blockTimestamp);
-    event VaultLeverageDownExecuted(VaultLeverageDownExecutedData);
-    struct VaultLeverageDownExecutedData {
         uint256 chainId;
         address vaultAddress;
         address userAddress;
@@ -330,42 +300,6 @@ contract TwyneVaultListener is
             logIndex: logIndex
         }));
         PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "post", "handleExternalLiquidation");
-        emit PositionSnapshot(snapshot);
-        logIndex += 1;
-    }
-
-    function onTLeverageUpExecutedEvent(
-        EventContext memory ctx,
-        EulerCollateralVault$TLeverageUpExecutedEventParams memory inputs
-    ) external override {
-        emit VaultLeverageUpExecuted(VaultLeverageUpExecutedData({
-            chainId: uint256(block.chainid),
-            vaultAddress: ctx.txn.call.callee(),
-            userAddress: ctx.txn.call.caller(),
-            blockNumber: uint64(block.number),
-            blockTimestamp: uint64(block.timestamp),
-            txnHash: ctx.txn.hash(),
-            logIndex: logIndex
-        }));
-        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "post", "leverageUpExecuted");
-        emit PositionSnapshot(snapshot);
-        logIndex += 1;
-    }
-
-    function onTLeverageDownExecutedEvent(
-        EventContext memory ctx,
-        EulerCollateralVault$TLeverageDownExecutedEventParams memory inputs
-    ) external override {
-        emit VaultLeverageDownExecuted(VaultLeverageDownExecutedData({
-            chainId: uint256(block.chainid),
-            vaultAddress: ctx.txn.call.callee(),
-            userAddress: ctx.txn.call.caller(),
-            blockNumber: uint64(block.number),
-            blockTimestamp: uint64(block.timestamp),
-            txnHash: ctx.txn.hash(),
-            logIndex: logIndex
-        }));
-        PositionSnapshotData memory snapshot = getPositionSnapshot(ctx.txn.call.callee(), "post", "leverageDownExecuted");
         emit PositionSnapshot(snapshot);
         logIndex += 1;
     }
@@ -629,7 +563,7 @@ contract TwyneVaultListener is
     }
 
     function getTriggers() external view returns (Trigger[] memory) {
-        Trigger[] memory triggers = new Trigger[](24);
+        Trigger[] memory triggers = new Trigger[](22);
         triggers[0] = this.triggerPreDepositFunction();
         triggers[1] = this.triggerOnTDepositEvent();
         triggers[2] = this.triggerPreDepositUnderlyingFunction();
@@ -646,14 +580,12 @@ contract TwyneVaultListener is
         triggers[13] = this.triggerOnLiquidateFunction();
         triggers[14] = this.triggerPreHandleExternalLiquidationFunction();
         triggers[15] = this.triggerOnTHandleExternalLiquidationEvent();
-        triggers[16] = this.triggerOnTLeverageUpExecutedEvent();
-        triggers[17] = this.triggerOnTLeverageDownExecutedEvent();
-        triggers[18] = this.triggerPreRebalanceFunction();
-        triggers[19] = this.triggerOnTRebalanceEvent();
-        triggers[20] = this.triggerPreRedeemUnderlyingFunction();
-        triggers[21] = this.triggerOnTRedeemUnderlyingEvent();
-        triggers[22] = this.triggerPreSkimFunction();
-        triggers[23] = this.triggerOnTSkimEvent();
+        triggers[16] = this.triggerPreRebalanceFunction();
+        triggers[17] = this.triggerOnTRebalanceEvent();
+        triggers[18] = this.triggerPreRedeemUnderlyingFunction();
+        triggers[19] = this.triggerOnTRedeemUnderlyingEvent();
+        triggers[20] = this.triggerPreSkimFunction();
+        triggers[21] = this.triggerOnTSkimEvent();
         return triggers;
     }
     

@@ -561,32 +561,6 @@
     },
     {
         "type": "event",
-        "name": "T_LeverageDownExecuted",
-        "inputs": [
-            {
-                "name": "collateralVault",
-                "type": "address",
-                "indexed": true,
-                "internalType": "address"
-            }
-        ],
-        "anonymous": false
-    },
-    {
-        "type": "event",
-        "name": "T_LeverageUpExecuted",
-        "inputs": [
-            {
-                "name": "collateralVault",
-                "type": "address",
-                "indexed": true,
-                "internalType": "address"
-            }
-        ],
-        "anonymous": false
-    },
-    {
-        "type": "event",
         "name": "T_Rebalance",
         "inputs": [],
         "anonymous": false

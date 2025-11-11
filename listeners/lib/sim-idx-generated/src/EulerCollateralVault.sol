@@ -164,14 +164,6 @@ struct EulerCollateralVault$TDepositUnderlyingEventParams {
     uint256 amount;
 }
 
-struct EulerCollateralVault$TLeverageDownExecutedEventParams {
-    address collateralVault;
-}
-
-struct EulerCollateralVault$TLeverageUpExecutedEventParams {
-    address collateralVault;
-}
-
 struct EulerCollateralVault$TRedeemUnderlyingEventParams {
     uint256 amount;
     address receiver;
@@ -247,34 +239,6 @@ abstract contract EulerCollateralVault$OnTHandleExternalLiquidationEvent {
             triggerType: TriggerType.EVENT,
             listenerCodehash: address(this).codehash,
             handlerSelector: this.onTHandleExternalLiquidationEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTLeverageDownExecutedEvent {
-    function onTLeverageDownExecutedEvent(EventContext memory ctx, EulerCollateralVault$TLeverageDownExecutedEventParams memory inputs) virtual external;
-
-    function triggerOnTLeverageDownExecutedEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0x5664d9f93611a7b8fa5593a4306aa9ebbc5833c6623003a58fba5422a64e2c78),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTLeverageDownExecutedEvent.selector
-        });
-    }
-}
-
-abstract contract EulerCollateralVault$OnTLeverageUpExecutedEvent {
-    function onTLeverageUpExecutedEvent(EventContext memory ctx, EulerCollateralVault$TLeverageUpExecutedEventParams memory inputs) virtual external;
-
-    function triggerOnTLeverageUpExecutedEvent() view external returns (Trigger memory) {
-        return Trigger({
-            abiName: "EulerCollateralVault",
-            selector: bytes32(0xe86ce781db2c518350b7a19983a3fa50f839ae0b5a387d6ef5eac7d37fad182a),
-            triggerType: TriggerType.EVENT,
-            listenerCodehash: address(this).codehash,
-            handlerSelector: this.onTLeverageUpExecutedEvent.selector
         });
     }
 }
@@ -1357,14 +1321,6 @@ struct EulerCollateralVault$EmitAllEvents$TDepositUnderlying {
   uint256 amount;
 }
 
-struct EulerCollateralVault$EmitAllEvents$TLeverageDownExecuted {
-  address collateralVault;
-}
-
-struct EulerCollateralVault$EmitAllEvents$TLeverageUpExecuted {
-  address collateralVault;
-}
-
 struct EulerCollateralVault$EmitAllEvents$TRedeemUnderlying {
   uint256 amount;
   address receiver;
@@ -1393,8 +1349,6 @@ contract EulerCollateralVault$EmitAllEvents is
 EulerCollateralVault$OnTDepositEvent,
 EulerCollateralVault$OnTDepositUnderlyingEvent,
 EulerCollateralVault$OnTHandleExternalLiquidationEvent,
-EulerCollateralVault$OnTLeverageDownExecutedEvent,
-EulerCollateralVault$OnTLeverageUpExecutedEvent,
 EulerCollateralVault$OnTRebalanceEvent,
 EulerCollateralVault$OnTRedeemUnderlyingEvent,
 EulerCollateralVault$OnTRepayEvent,
@@ -1406,8 +1360,6 @@ EulerCollateralVault$OnTWithdrawEvent
   event TDeposit(EulerCollateralVault$EmitAllEvents$TDeposit);
   event TDepositUnderlying(EulerCollateralVault$EmitAllEvents$TDepositUnderlying);
   event THandleExternalLiquidation();
-  event TLeverageDownExecuted(EulerCollateralVault$EmitAllEvents$TLeverageDownExecuted);
-  event TLeverageUpExecuted(EulerCollateralVault$EmitAllEvents$TLeverageUpExecuted);
   event TRebalance();
   event TRedeemUnderlying(EulerCollateralVault$EmitAllEvents$TRedeemUnderlying);
   event TRepay(EulerCollateralVault$EmitAllEvents$TRepay);
@@ -1426,12 +1378,6 @@ function onTDepositUnderlyingEvent(EventContext memory ctx, EulerCollateralVault
   }
 function onTHandleExternalLiquidationEvent(EventContext memory ctx) virtual external override {
     emit THandleExternalLiquidation();
-  }
-function onTLeverageDownExecutedEvent(EventContext memory ctx, EulerCollateralVault$TLeverageDownExecutedEventParams memory inputs) virtual external override {
-    emit TLeverageDownExecuted(EulerCollateralVault$EmitAllEvents$TLeverageDownExecuted(inputs.collateralVault));
-  }
-function onTLeverageUpExecutedEvent(EventContext memory ctx, EulerCollateralVault$TLeverageUpExecutedEventParams memory inputs) virtual external override {
-    emit TLeverageUpExecuted(EulerCollateralVault$EmitAllEvents$TLeverageUpExecuted(inputs.collateralVault));
   }
 function onTRebalanceEvent(EventContext memory ctx) virtual external override {
     emit TRebalance();
@@ -1453,19 +1399,17 @@ function onTWithdrawEvent(EventContext memory ctx, EulerCollateralVault$TWithdra
   }
 
   function allTriggers() view external returns (Trigger[] memory) {
-    Trigger[] memory triggers = new Trigger[](12);
+    Trigger[] memory triggers = new Trigger[](10);
     triggers[0] = this.triggerOnTBorrowEvent();
     triggers[1] = this.triggerOnTDepositEvent();
     triggers[2] = this.triggerOnTDepositUnderlyingEvent();
     triggers[3] = this.triggerOnTHandleExternalLiquidationEvent();
-    triggers[4] = this.triggerOnTLeverageDownExecutedEvent();
-    triggers[5] = this.triggerOnTLeverageUpExecutedEvent();
-    triggers[6] = this.triggerOnTRebalanceEvent();
-    triggers[7] = this.triggerOnTRedeemUnderlyingEvent();
-    triggers[8] = this.triggerOnTRepayEvent();
-    triggers[9] = this.triggerOnTSkimEvent();
-    triggers[10] = this.triggerOnTTeleportEvent();
-    triggers[11] = this.triggerOnTWithdrawEvent();
+    triggers[4] = this.triggerOnTRebalanceEvent();
+    triggers[5] = this.triggerOnTRedeemUnderlyingEvent();
+    triggers[6] = this.triggerOnTRepayEvent();
+    triggers[7] = this.triggerOnTSkimEvent();
+    triggers[8] = this.triggerOnTTeleportEvent();
+    triggers[9] = this.triggerOnTWithdrawEvent();
     return triggers;
   }
 }
