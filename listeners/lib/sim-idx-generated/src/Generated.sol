@@ -5,7 +5,6 @@ import "./ChainlinkAggregator.sol";
 import "./CollateralVaultFactory.sol";
 import "./EVault.sol";
 import "./EVaultLiquidate.sol";
-import "./EVault_old.sol";
 import "./EthereumVaultConnector.sol";
 import "./EulerCollateralVault.sol";
 import "./EulerRouter.sol";

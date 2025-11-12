@@ -261,6 +261,16 @@ export const vaultDepositUnderlying = table("vault_deposit_underlying", {
   logIndex: db.uint256('log_index'),
 })
 
+export const vaultHandleExternalLiquidation = table("vault_handle_external_liquidation", {
+  chainId: db.uint256('chain_id'),
+  vaultAddress: db.address('vault_address'),
+  userAddress: db.address('user_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  logIndex: db.uint256('log_index'),
+})
+
 export const vaultMetrics = table("vault_metrics", {
   chainId: db.uint256('chain_id'),
   vaultAddress: db.address('vault_address'),
@@ -277,10 +287,43 @@ export const vaultMetrics = table("vault_metrics", {
   blockTimestamp: db.uint256('block_timestamp'),
 })
 
+export const vaultRebalance = table("vault_rebalance", {
+  chainId: db.uint256('chain_id'),
+  vaultAddress: db.address('vault_address'),
+  userAddress: db.address('user_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  logIndex: db.uint256('log_index'),
+})
+
+export const vaultRedeemUnderlying = table("vault_redeem_underlying", {
+  chainId: db.uint256('chain_id'),
+  vaultAddress: db.address('vault_address'),
+  amount: db.uint256('amount'),
+  receiver: db.address('receiver'),
+  userAddress: db.address('user_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  logIndex: db.uint256('log_index'),
+})
+
 export const vaultRepay = table("vault_repay", {
   chainId: db.uint256('chain_id'),
   vaultAddress: db.address('vault_address'),
   repayAmount: db.uint256('repay_amount'),
+  userAddress: db.address('user_address'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  txnHash: db.bytes32('txn_hash'),
+  logIndex: db.uint256('log_index'),
+})
+
+export const vaultSkim = table("vault_skim", {
+  chainId: db.uint256('chain_id'),
+  vaultAddress: db.address('vault_address'),
+  amount: db.uint256('amount'),
   userAddress: db.address('user_address'),
   blockNumber: db.uint64('block_number'),
   blockTimestamp: db.uint64('block_timestamp'),
